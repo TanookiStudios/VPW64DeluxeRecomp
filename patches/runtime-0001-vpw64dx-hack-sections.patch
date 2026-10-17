@@ -1,0 +1,105 @@
+diff --git a/librecomp/src/overlays.cpp b/librecomp/src/overlays.cpp
+index ec6176b..ddd234a 100644
+--- a/librecomp/src/overlays.cpp
++++ b/librecomp/src/overlays.cpp
+@@ -218,13 +218,31 @@ extern "C" void load_overlays(uint32_t rom, int32_t ram_addr, uint32_t size) {
+         // partially unload section"). Every legitimate caller in this stack (boot fixed-segment
+         // map, the pi.cpp overlay-swap hook, WT's layout) loads sections at their registered
+         // address, so this filter is a no-op for them.
+-        if (load_addr != it->ram_addr) {
++        if (load_addr != it->ram_addr && it->rom_addr < 0x2000000u) {
+             continue;
+         }
++        // [vpw64dx] Sections past the retail image are the hack's position-independent code
++        // block: it is loaded into a game-allocated buffer, so map it at the actual address.
++        if (load_addr != it->ram_addr) {
++            fprintf(stderr, "[vpw64dx][ovl] far section rom=0x%07X mapped at 0x%08X (linked 0x%08X)\n",
++                it->rom_addr, (uint32_t)load_addr, (uint32_t)it->ram_addr);
++        }
+         load_overlay(std::distance(&sections_info.code_sections[0], it), load_addr);
+     }
+ }
+ 
++// [vpw64dx] Map one registered section (by its exact rom offset) at a given address, for code
++// the game puts in place without a DMA. Unlike load_overlays this tolerates nested sections.
++extern "C" void load_section_by_rom(uint32_t rom, int32_t ram) {
++    auto it = code_sections_by_rom.find(rom);
++    if (it == code_sections_by_rom.end()) {
++        fprintf(stderr, "[vpw64dx][ovl] no section at rom 0x%07X\n", rom);
++        return;
++    }
++    fprintf(stderr, "[vpw64dx][ovl] section rom=0x%07X mapped at 0x%08X\n", rom, (uint32_t)ram);
++    load_overlay(it->second, ram);
++}
++
+ extern "C" void unload_overlay_by_id(uint32_t id) {
+     uint32_t section_table_index = overlays_info.table[id];
+     const SectionTableEntry& section = sections_info.code_sections[section_table_index];
+diff --git a/librecomp/src/pi.cpp b/librecomp/src/pi.cpp
+index 232b0a0..935218f 100644
+--- a/librecomp/src/pi.cpp
++++ b/librecomp/src/pi.cpp
+@@ -337,8 +337,13 @@ void ultramodern::join_saving_thread() {
+ // whatever the incoming section clobbers, then loads it). Handles WM2000's two swap slots
+ // (0x800E1B90 / 0x8011C900, four overlays, one spanning both) with identical behavior for
+ // WT/Revenge (their swap sections' ram_addr IS 0x80090000).
+-static void wcw_maybe_load_overlay(gpr rdram_address, uint32_t physical_addr) {
++static void wcw_maybe_load_overlay(gpr rdram_address, uint32_t physical_addr, uint32_t size) {
+     uint32_t rom_off = physical_addr - (uint32_t)recomp::rom_base;
++    // [vpw64dx] The hack keeps its code past the retail 32 MB image; log those loads so the
++    // block's RAM address and size can be matched to the hack_far section.
++    if (rom_off >= 0x2000000u) {
++        fprintf(stderr, "[vpw64dx][dma] rom=0x%07X -> 0x%08X size=0x%X\n", rom_off, (uint32_t)rdram_address, size);
++    }
+     if (wcw_try_swap_overlay(rom_off, (int32_t)(uint32_t)rdram_address)) {
+         fprintf(stderr, "[wcw][ovl] map overlay rom=0x%06X -> 0x%08X\n", rom_off, (uint32_t)rdram_address);
+     }
+@@ -362,7 +367,7 @@ void do_dma(RDRAM_ARG PTR(OSMesgQueue) mq, gpr rdram_address, uint32_t physical_
+         if (physical_addr >= recomp::rom_base) {
+             // read cart rom
+             recomp::do_rom_read(rdram, rdram_address, physical_addr, size);
+-            wcw_maybe_load_overlay(rdram_address, physical_addr);
++            wcw_maybe_load_overlay(rdram_address, physical_addr, size);
+ 
+             // Send a message to the mq to indicate that the transfer completed
+             ultramodern::enqueue_external_message(mq, 0, false, true);
+diff --git a/librecomp/src/recomp.cpp b/librecomp/src/recomp.cpp
+index aad9c57..6e48068 100644
+--- a/librecomp/src/recomp.cpp
++++ b/librecomp/src/recomp.cpp
+@@ -17,6 +17,8 @@
+ 
+ #include "recomp.h"
+ #include "librecomp/overlays.hpp"
++
++extern "C" void recomp_load_extra_boot_overlays() __attribute__((weak));
+ #include "librecomp/game.hpp"
+ #include "xxHash/xxh3.h"
+ #include "ultramodern/ultramodern.hpp"
+@@ -521,6 +523,11 @@ void init(uint8_t* rdram, recomp_context* ctx, gpr entrypoint) {
+     // WT/Revenge; see overlays.cpp.
+     load_boot_resident_overlays(0x1000, (int32_t)entrypoint, 1024 * 1024);
+ 
++    // [vpw64dx] Sections the game copies into place with the CPU (no DMA to hook).
++    if (recomp_load_extra_boot_overlays != nullptr) {
++        recomp_load_extra_boot_overlays();
++    }
++
+     // Initial 1MB DMA (rom address 0x1000 = physical address 0x10001000)
+     recomp::do_rom_read(rdram, entrypoint, 0x10001000, 0x100000);
+ 
+diff --git a/librecomp/src/save_backups.cpp b/librecomp/src/save_backups.cpp
+index 0751323..969c47e 100644
+--- a/librecomp/src/save_backups.cpp
++++ b/librecomp/src/save_backups.cpp
+@@ -118,7 +118,9 @@ namespace recomp {
+                 return std::nullopt;
+             }
+ 
+-            const auto sys = std::chrono::clock_cast<std::chrono::system_clock>(ftime);
++            // Apple's libc++ has no std::chrono::clock_cast: convert through "now" on both clocks.
++            const auto sys = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
++                ftime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+             return from_time_t(std::chrono::system_clock::to_time_t(sys));
+         }
+ 

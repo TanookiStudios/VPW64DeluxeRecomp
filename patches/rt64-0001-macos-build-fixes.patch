@@ -1,0 +1,51 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 62da249..1fc1ed3 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -484,7 +484,7 @@ if (APPLE)
+     target_sources(rt64 PRIVATE
+         "${PROJECT_SOURCE_DIR}/src/apple/rt64_apple.mm"
+     )
+-    target_include_directories(rt64 PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/metal-cpp")
++    target_include_directories(rt64 PRIVATE "${PROJECT_SOURCE_DIR}/src/contrib/plume/contrib/metal-cpp")
+     target_link_libraries(rt64 "-framework Metal -framework QuartzCore -framework CoreGraphics -framework IOKit")
+ endif()
+ 
+diff --git a/src/contrib/hlslpp b/src/contrib/hlslpp
+--- a/src/contrib/hlslpp
++++ b/src/contrib/hlslpp
+@@ -1 +1 @@
+-Subproject commit 6f5274c66132e8f951c400103d897582b8f21491
++Subproject commit 6f5274c66132e8f951c400103d897582b8f21491-dirty
+diff --git a/src/gbi/rt64_gbi.cpp b/src/gbi/rt64_gbi.cpp
+index 5debe75..cb056ad 100644
+--- a/src/gbi/rt64_gbi.cpp
++++ b/src/gbi/rt64_gbi.cpp
+@@ -160,7 +160,7 @@ namespace RT64 {
+     // 
+     //                  Length      Hash                    Known instances               
+     //     
+-    static std::array<GBISegment, 96> textSegments = {
++    static std::array<GBISegment, 98> textSegments = {
+             // [wcw2k] WM2000's "F3DLX.Rej xbus 2.08" (AKI 1999): bytes past 0x1000 of the
+             // text are VOLATILE at runtime (hashed differently seconds apart mid-run —
+             // self-modified or yield-state spill), so match on the stable 0x1000-byte
+@@ -230,7 +230,9 @@ namespace RT64 {
+             // but the 3D ucode's DATA hashes identically to F3DEX2_XBUS_2_08's 0x420-byte
+             // entry below — same GBI command set for both, per family.
+             GBISegment{ 0x13A0,     0x60BF253FA40991C0ULL,  { &F3DEX2_XBUS_2_08 } },
++            GBISegment{ 0x13A0,     0xB68BA59E10265690ULL,  { &F3DEX2_XBUS_2_08 } }, // [vpw64dx] VPW64 Deluxe hack ships a modified copy (data hash matches stock).
+             GBISegment{ 0x1198,     0xD5E0AABE069BA75CULL,  { &F3DLX2_XBUS_2_08_REJ } }, // Needs confirmation.
++            GBISegment{ 0x1198,     0xF351A76CBDD050FCULL,  { &F3DLX2_XBUS_2_08_REJ } }, // [vpw64dx] VPW64 Deluxe hack copy (data hash matches stock).
+             GBISegment{ 0x1370,     0xCFCF197526613F82ULL,  { &F3DEX2_NON_FIFO_2_03 } }, // Needs confirmation.
+             GBISegment{ 0x1390,     0xDF624201BC21895EULL,  { &F3DEX2_NON_FIFO_2_04 } }, // Needs confirmation.
+             GBISegment{ 0x1390,     0x0856C0CA45B9ABC4ULL,  { &F3DEX2_NON_FIFO_2_05 } },
+@@ -454,7 +456,7 @@ namespace RT64 {
+             // [wcw2k] DIAGNOSTIC: print hashes at common segment sizes so an unknown ucode
+             // can be added to the database (WM2000 ships "F3DEX xbus 2.08", an AKI-era
+             // build absent from the tables).
+-            for (uint32_t tlen : { 0x1000u, 0x13A0u, 0x1408u }) {
++            for (uint32_t tlen : { 0x1000u, 0x1198u, 0x13A0u, 0x1408u }) {
+                 fprintf(stderr, "[wcw][gbi] texthash(len=0x%X)=0x%016" PRIX64 "ULL text=0x%X\n",
+                     tlen, XXH3_64bits(&RDRAM[textAddress], tlen), textAddress);
+             }

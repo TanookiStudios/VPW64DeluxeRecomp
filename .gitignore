@@ -1,0 +1,16 @@
+# Never commit the ROM, anything generated from it, or engine checkouts.
+rom/
+*.z64
+*.n64
+*.v64
+vendor/
+build*/
+RecompiledFuncs/
+rsp/*.cpp
+work/
+dist/
+*.log
+.DS_Store
+N64Recomp
+RSPRecomp
+icons/

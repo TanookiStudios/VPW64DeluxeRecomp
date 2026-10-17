@@ -1,0 +1,59 @@
+diff --git a/include/recompiler/generator.h b/include/recompiler/generator.h
+index 145bcd0..2e3f647 100644
+--- a/include/recompiler/generator.h
++++ b/include/recompiler/generator.h
+@@ -34,6 +34,9 @@ namespace N64Recomp {
+         virtual void emit_function_end() const = 0;
+         virtual void emit_function_call_lookup(uint32_t addr) const = 0;
+         virtual void emit_function_call_by_register(int reg) const = 0;
++        // [vpw64dx] Write the MIPS return address into $ra before a call: hand-written ROM-hack
++        // code compares $ra against caller addresses and parks it in other registers.
++        virtual void emit_set_return_address(uint32_t return_vram) const = 0;
+         // target_section_offset can each be deduced from symbol_index if the full context is available,
+         // but for live recompilation the reference symbol list is unavailable so it's still provided.
+         virtual void emit_function_call_reference_symbol(const Context& context, uint16_t section_index, size_t symbol_index, uint32_t target_section_offset) const = 0;
+@@ -73,6 +76,7 @@ namespace N64Recomp {
+         void emit_function_end() const final;
+         void emit_function_call_lookup(uint32_t addr) const final;
+         void emit_function_call_by_register(int reg) const final;
++        void emit_set_return_address(uint32_t return_vram) const final;
+         void emit_function_call_reference_symbol(const Context& context, uint16_t section_index, size_t symbol_index, uint32_t target_section_offset) const final;
+         void emit_function_call(const Context& context, size_t function_index) const final;
+         void emit_named_function_call(const std::string& function_name) const final;
+diff --git a/src/cgenerator.cpp b/src/cgenerator.cpp
+index 94f85c5..39d07ff 100644
+--- a/src/cgenerator.cpp
++++ b/src/cgenerator.cpp
+@@ -410,6 +410,10 @@ void N64Recomp::CGenerator::emit_function_call_lookup(uint32_t addr) const {
+     fmt::print(output_file, "LOOKUP_FUNC(0x{:08X})(rdram, ctx);\n", addr);
+ }
+ 
++void N64Recomp::CGenerator::emit_set_return_address(uint32_t return_vram) const {
++    fmt::print(output_file, "ctx->r31 = (gpr)(int32_t)0x{:08X}u;\n    ", return_vram);
++}
++
+ void N64Recomp::CGenerator::emit_function_call_by_register(int reg) const {
+     fmt::print(output_file, "LOOKUP_FUNC({})(rdram, ctx);\n", gpr_to_string(reg));
+ }
+diff --git a/src/recompilation.cpp b/src/recompilation.cpp
+index c228433..b8ec97e 100644
+--- a/src/recompilation.cpp
++++ b/src/recompilation.cpp
+@@ -473,6 +473,8 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+         break;
+     // Branches
+     case InstrId::cpu_jal:
++        print_indent();
++        generator.emit_set_return_address(instr_vram + 8);
+         if (!print_func_call_by_address(instr.getBranchVramGeneric())) {
+             return false;
+         }
+@@ -484,6 +486,8 @@ bool process_instruction(GeneratorType& generator, const N64Recomp::Context& con
+             return false;
+         }
+         needs_link_branch = true;
++        print_indent();
++        generator.emit_set_return_address(instr_vram + 8);
+         print_func_call_by_register(rs);
+         break;
+     case InstrId::cpu_j:
