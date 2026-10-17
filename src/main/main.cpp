@@ -281,7 +281,7 @@ static void update_scripted_pad() {
         if (dev < 0) { fprintf(stderr, "[vpw64dx] scripted pad failed: %s\n", SDL_GetError()); done = true; return; }
         pad = SDL_JoystickOpen(dev);
         t0 = SDL_GetTicks();
-        fprintf(stderr, "[vpw64dx] scripted pad attached (dev=%d)\n", dev);
+        fprintf(stderr, "[vpw64dx] scripted pad attached (dev=%d) script=\"%s\"\n", dev, script);
     }
     uint32_t now = SDL_GetTicks() - t0;
     // Apply every entry whose time stamp has passed (the last one wins).
