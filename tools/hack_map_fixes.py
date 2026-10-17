@@ -9,8 +9,10 @@ from recomp_loop import add_func_to_dump
 SIZES = {  # name: new size (see notes/hack-map.md)
     'func_80003E88': 0xC0, 'func_80003EB0': 0x98, 'func_80009628': 0x28,
     'func_80030C5C': 0x20, 'func_80030C7C': 0x2C, 'func_80030D44': 0x1C,
+    'func_8003C5D0': 0x38,  # text-id hook chain: 0x800E9EE8 -> far 0x803874D0 -> here -> 0x8003C3F0 -> 0x8002C560 -> back
 }
-ADD = [('main_1050', 0x80030CA8, 0x8), ('main_1050', 0x80030D0C, 0x1C), ('main_1050', 0x80030D28, 0x1C), ('main_1050', 0x80030D60, 0x68)]
+ADD = [('main_1050', 0x80030CA8, 0x8), ('main_1050', 0x80030D0C, 0x1C), ('main_1050', 0x80030D28, 0x1C), ('main_1050', 0x80030D60, 0x68),
+       ('hack_main', 0x8003C3F0, 0x8), ('main_1050', 0x8002C560, 0x48)]
 UNSTUB = ['func_80003E88', 'func_80003EB0', 'func_80009628', 'func_80030C5C', 'func_80030C7C', 'func_80030D44']
 s = open('syms/dump.toml').read()
 for name, size in SIZES.items():
@@ -21,6 +23,10 @@ for sec, vram, size in ADD:
     if f'vram = 0x{vram:08X},' not in s: add_func_to_dump(sec, f'func_{vram:08X}', vram, size)
 stubs = [l for l in open('syms/manual_stubs.txt').read().split('\n') if l.strip() and l.strip() not in UNSTUB]
 open('syms/manual_stubs.txt', 'w').write('\n'.join(stubs) + '\n')
+# func_8002C580 (dead libultra space) is now the middle of the 0x8002C560 hook; drop it.
+s = open('syms/dump.toml').read(); s = re.sub(r'\n *\{ name = "func_8002C580", vram = 0x8002C580, size = 0xCC \},', '', s); open('syms/dump.toml', 'w').write(s)
+for p in ['vpw2.toml', 'syms/stub_candidates.txt']:
+    s = open(p).read().replace('    "func_8003C5D0",\n', ''); open(p, 'w').write(s)
 print('map fixes applied; manual stubs now:', stubs)
 
 # The hack saves the return address in a scratch register (`move $t9,$ra` ... `jr $t9`).

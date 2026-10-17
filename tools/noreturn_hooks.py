@@ -13,7 +13,7 @@ for m in re.finditer(r'\[\[section\]\]\nname = "([^"]+)"\nrom = (0x[0-9A-Fa-f]+)
     name, rom, vram, size, body = m.groups()
     funcs = [(n, int(a, 16), int(b, 16)) for n, a, b in re.findall(r'name = "(\w+)", vram = (0x[0-9A-Fa-f]+), size = (0x[0-9A-Fa-f]+)', body)]
     secs.append((name, int(rom, 16), int(vram, 16), int(size, 16), funcs))
-HACK = {'hack_main', 'hack_far', 'hack_tramp', 'entry'}
+HACK = {'hack_main', 'hack_far', 'hack_match', 'hack_tramp', 'entry'}
 def rom_of(v):
     for n, r, vr, s, fs in secs:
         if vr <= v < vr + s and n != 'ovl_d' and not (n == 'ovl_c' and v < 0x80119450 + 0x51130 and any(x == 'ovl_b' for x, *_ in secs) and False):
@@ -64,6 +64,17 @@ def is_noreturn(fv, seen=()):
         elif t in real_starts: return False
     return True
 noreturn = {fv for fv in hack_funcs if is_noreturn(fv)}
+def final_targets(fv, seen=()):
+    """The retail addresses a never-returning helper finally jumps to (through other hack helpers)."""
+    out = set()
+    for k, t in hack_funcs[fv][2]:
+        if t in hack_funcs and t not in seen: out |= final_targets(t, seen + (fv,))
+        else: out.add(t)
+    return out
+# Only a helper that jumps to the call site's own return point (jal pc + 8) "returns by jump".
+# One that jumps into the body of a DIFFERENT function is calling the original code, whose
+# `jr $ra` comes back to the hook (0x8003C500 -> 0x8003C588 -> 0x80009F4C): leave that jal alone.
+def returns_by_jump(t, pc): return t in noreturn and final_targets(t) == {pc + 8}
 # every jal / slot-jalr to a noreturn function, in all mapped code
 patches = []
 for n, r, vr, s, fs in secs:
@@ -72,14 +83,14 @@ for n, r, vr, s, fs in secs:
             w = W(r + (pc - vr))
             if (w >> 26) == 3:
                 t = 0x80000000 | ((w & 0x3FFFFFF) << 2)
-                if t in noreturn: patches.append((fname, pc, 0x08000000 | (w & 0x3FFFFFF), f'jal->j {t:08X} (helper never returns)'))
+                if returns_by_jump(t, pc): patches.append((fname, pc, 0x08000000 | (w & 0x3FFFFFF), f'jal->j {t:08X} (helper never returns)'))
             elif (w & 0xFC00003F) == 0x9 and ((w >> 21) & 0x1F) == 25:   # jalr $t9
                 w1, w2 = W(r + (pc - 8 - vr)), W(r + (pc - 4 - vr))
                 if (w1 >> 26) == 0xF and (w2 >> 26) == 0x23 and ((w2 >> 21) & 0x1F) == 25:
                     imm = w2 & 0xFFFF; slot = (((w1 & 0xFFFF) << 16) + (imm - 0x10000 if imm & 0x8000 else imm)) & 0xFFFFFFFF
                     t = slots.get(slot)
-                    if t in noreturn: patches.append((fname, pc, 0x03200008, f'jalr->jr $t9 (slot {slot:08X} -> {t:08X} never returns)'))
-toml = open('vpw2.toml').read()
+                    if t is not None and returns_by_jump(t, pc): patches.append((fname, pc, 0x03200008, f'jalr->jr $t9 (slot {slot:08X} -> {t:08X} never returns)'))
+toml = re.sub(r'\n\[\[patches\.instruction\]\]\nfunc = "\w+"\nvram = 0x[0-9A-F]+\nvalue = 0x[0-9A-F]+  # \[noreturn_hooks\][^\n]*\n', '', open('vpw2.toml').read())
 added = 0
 for fname, pc, val, why in patches:
     if f'func = "{fname}"\nvram = 0x{pc:08X}\n' in toml: continue

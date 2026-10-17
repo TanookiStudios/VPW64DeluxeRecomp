@@ -6,7 +6,9 @@ tools/find_far_funcs.py as a mid-entry. Branches between runs are resolved by th
 loop's mid-entry injection. Idempotent."""
 import re, struct, subprocess, sys
 from capstone import Cs, CS_ARCH_MIPS, CS_MODE_MIPS64, CS_MODE_BIG_ENDIAN
-ROM, RAM, SZ = 0x2FA1704, 0x80364B30, 0x25380
+NAME, ROM, RAM, SZ = 'hack_far', 0x2FA1704, 0x80364B30, 0x25380
+if len(sys.argv) == 5:   # another CPU-copied code block: gen_far_section.py <name> <rom> <ram> <size>
+    NAME = sys.argv[1]; ROM, RAM, SZ = (int(x, 16) for x in sys.argv[2:5])
 md = Cs(CS_ARCH_MIPS, CS_MODE_MIPS64 | CS_MODE_BIG_ENDIAN)
 d = open('vpw2.z64', 'rb').read()
 words = [(d[o:o+4], o) for o in range(ROM, ROM + SZ, 4)]
@@ -36,7 +38,7 @@ for i, v in enumerate(ok):
 if s is not None and len(ok) - s >= 8: runs.append((s, len(ok)))
 funcs = {}
 for a, b in runs: funcs[RAM + 4 * a] = 4 * (b - a)
-seeds = subprocess.run([sys.executable, '-I', 'tools/find_far_funcs.py', hex(ROM), hex(RAM), hex(SZ)], capture_output=True, text=True).stdout
+seeds = '' if NAME != 'hack_far' else subprocess.run([sys.executable, '-I', 'tools/find_far_funcs.py', hex(ROM), hex(RAM), hex(SZ)], capture_output=True, text=True).stdout
 for v in re.findall(r'vram = (0x[0-9A-F]+)', seeds):
     v = int(v, 16)
     run = next(((a, b) for a, b in runs if RAM + 4 * a <= v < RAM + 4 * b), None)
@@ -80,14 +82,14 @@ for a, b in runs:
     for v, nxt in zip(inrun, inrun[1:] + [RAM + 4 * b]):
         funcs[v] = nxt - v
 lines = ''.join(f'    {{ name = "func_{v:08X}", vram = 0x{v:08X}, size = 0x{funcs[v]:X} }},\n' for v in sorted(funcs))
-sec = f'[[section]]\nname = "hack_far"\nrom = 0x{ROM:08X}\nvram = 0x{RAM:08X}\nsize = 0x{SZ:X}\n\nfunctions = [\n{lines}]\n\n'
+sec = f'[[section]]\nname = "{NAME}"\nrom = 0x{ROM:08X}\nvram = 0x{RAM:08X}\nsize = 0x{SZ:X}\n\nfunctions = [\n{lines}]\n\n'
 t = open('syms/dump.toml').read()
-if 'name = "hack_far"' in t:
-    t = re.sub(r'\[\[section\]\]\nname = "hack_far".*?\]\n\n', sec, t, flags=re.S)
+if f'name = "{NAME}"' in t:
+    t = re.sub(r'\[\[section\]\]\nname = "%s".*?\]\n\n' % NAME, sec, t, flags=re.S)
 else:
     i = t.index('[[section]]\nname = "ovl_a"'); t = t[:i] + sec + t[i:]
 open('syms/dump.toml', 'w').write(t)
 # the section is regenerated whole: drop earlier loop injections for it
-e = [l for l in open('syms/extra_funcs.txt') if not l.startswith('hack_far ')]
+e = [l for l in open('syms/extra_funcs.txt') if not l.startswith(NAME + ' ')]
 open('syms/extra_funcs.txt', 'w').write(''.join(e))
-print(f'hack_far: {len(runs)} code runs, {len(funcs)} functions')
+print(f'{NAME}: {len(runs)} code runs, {len(funcs)} functions')

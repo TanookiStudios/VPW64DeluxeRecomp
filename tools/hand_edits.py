@@ -28,23 +28,25 @@ if edited == 0: print('hand edits already present')
 #    the generated C would just return. Append a tail call to the next piece.
 import struct
 rom_data = open('vpw2.z64', 'rb').read()
-ROM, RAM = 0x2FA1704, 0x80364B30
-far = sorted((int(v, 16), int(s, 16)) for v, s in re.findall(r'name = "func_(?:803[6-8][0-9A-F]+)", vram = (0x[0-9A-F]+), size = (0x[0-9A-F]+)', open('syms/dump.toml').read()))
-starts = {v for v, s in far}
+BLOCKS = [(0x2FA1704, 0x80364B30, r'803[6-8]'), (0x2F1A9D4, 0x801BB3A0, r'801B[BC]')]   # hack_far, hack_match
 def uncond(w):
     return w == 0x03E00008 or (w & 0xFC1F07FF) == 0x8 or (w >> 26) == 2 or (w & 0xFFFF0000) == 0x10000000
 chained = 0
-for v, s in far:
-    end = v + s
-    if end not in starts: continue
-    last = struct.unpack_from('>I', rom_data, ROM + (end - 8 - RAM))[0]
-    if uncond(last): continue
-    for fn in glob.glob('RecompiledFuncs/*.c'):
-        src = open(fn, encoding='utf-8', errors='replace').read()
-        sig = f'RECOMP_FUNC void func_{v:08X}(uint8_t* rdram, recomp_context* ctx) {{\n'
-        if sig not in src: continue
-        i = src.index(sig); j = src.index('\n;}', i)
-        if f'func_{end:08X}(rdram, ctx);' in src[i:j]: break   # already chained
-        src = src[:j] + f'\n    func_{end:08X}(rdram, ctx);   /* falls through on hardware */\n    return;' + src[j:]
-        open(fn, 'w', encoding='utf-8').write(src); chained += 1; break
+dump_text = open('syms/dump.toml').read()
+for ROM, RAM, pat in BLOCKS:
+    far = sorted((int(v, 16), int(s, 16)) for v, s in re.findall(r'name = "func_(?:%s[0-9A-F]+)", vram = (0x[0-9A-F]+), size = (0x[0-9A-F]+)' % pat, dump_text))
+    starts = {v for v, s in far}
+    for v, s in far:
+        end = v + s
+        if end not in starts: continue
+        last = struct.unpack_from('>I', rom_data, ROM + (end - 8 - RAM))[0]
+        if uncond(last): continue
+        for fn in glob.glob('RecompiledFuncs/*.c'):
+            src = open(fn, encoding='utf-8', errors='replace').read()
+            sig = f'RECOMP_FUNC void func_{v:08X}(uint8_t* rdram, recomp_context* ctx) {{\n'
+            if sig not in src: continue
+            i = src.index(sig); j = src.index('\n;}', i)
+            if f'func_{end:08X}(rdram, ctx);' in src[i:j]: break   # already chained
+            src = src[:j] + f'\n    func_{end:08X}(rdram, ctx);   /* falls through on hardware */\n    return;' + src[j:]
+            open(fn, 'w', encoding='utf-8').write(src); chained += 1; break
 print(f'{chained} far-block pieces chained to their successor')

@@ -29,6 +29,7 @@ apply() {  # apply <dir> <patch>
 for p in patches/n64recomp-*.patch; do [ -f "$p" ] && apply N64Recomp "$p"; done
 for p in patches/rt64-*.patch; do [ -f "$p" ] && apply rt64 "$p"; done
 for p in patches/runtime-*.patch; do [ -f "$p" ] && apply N64ModernRuntime "$p"; done
+for p in patches/runtime-lib-*.patch; do [ -f "$p" ] && apply N64ModernRuntime/N64Recomp "$p"; done   # the runtime's own copy of the recompiler headers
 for p in patches/frontend-*.patch; do [ -f "$p" ] && apply RecompFrontend "$p"; done
 # The recompiler itself (run once per ROM; its output is never committed).
 if [ ! -x N64Recomp ]; then

@@ -12,7 +12,7 @@ for line in t.split('\n'):
     f = re.search(r'\{ name = "(\w+)", vram = (0x[0-9A-Fa-f]+), size', line)
     if f:
         name = f.group(1)
-        base = re.sub(r'_(entry|main_1050|hack_main|hack_tramp|hack_far|ovl_[a-d])$', '', name)
+        base = re.sub(r'_(entry|main_1050|hack_main|hack_tramp|hack_far|hack_match|ovl_[a-d])$', '', name)
         if base in seen and seen[base] != sec:
             new = f'{base}_{sec}'
             if name != new:

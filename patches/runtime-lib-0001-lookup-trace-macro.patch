@@ -1,0 +1,20 @@
+diff --git a/include/recomp.h b/include/recomp.h
+index 85578a2..dbd5cec 100644
+--- a/include/recomp.h
++++ b/include/recomp.h
+@@ -447,8 +447,15 @@ typedef void (recomp_func_ext_t)(uint8_t* rdram, recomp_context* ctx, uintptr_t
+ 
+ recomp_func_t* get_function(int32_t vram);
+ 
++#ifdef VPW_TRACE_CALLERS
++// [vpw64dx] bring-up diagnostics: log every computed jump with the translated function making it
++void vpw_lookup_trace(const char* from, int32_t addr, int32_t s1, int32_t sp);
++#define LOOKUP_FUNC(val) \
++    (vpw_lookup_trace(__func__, (int32_t)(val), (int32_t)ctx->r17, (int32_t)ctx->r29), get_function((int32_t)(val)))
++#else
+ #define LOOKUP_FUNC(val) \
+     get_function((int32_t)(val))
++#endif
+ 
+ extern int32_t* section_addresses;
+ 

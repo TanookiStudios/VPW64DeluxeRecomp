@@ -93,11 +93,15 @@ extern "C" void vpw_lookup_trace(const char* from, int32_t addr, int32_t s1, int
 }
 
 // [vpw64dx] ring of the last hack-section pieces entered (tools/lastpiece.py), printed on a crash.
-const char* vpw_last_piece[8] = {};
+const char* vpw_last_piece[32] = {};
+static uint32_t vpw_last_s0[32], vpw_last_sp[32];
 static unsigned vpw_last_piece_i = 0;
-extern "C" void vpw_note_piece(const char* name) { vpw_last_piece[vpw_last_piece_i++ & 7] = name; }
+extern "C" void vpw_note_piece(const char* name, uint32_t s0, uint32_t sp) {
+    if (sp < 0x8008C000u || sp > 0x8008DE20u) return;   // bring-up: main thread's stack only
+    unsigned k = vpw_last_piece_i++ & 31; vpw_last_piece[k] = name; vpw_last_s0[k] = s0; vpw_last_sp[k] = sp;
+}
 extern "C" void vpw_print_last_pieces() {
     fprintf(stderr, "[vpw64dx] last hack pieces (oldest first):");
-    for (unsigned k = 0; k < 8; k++) { const char* n = vpw_last_piece[(vpw_last_piece_i + k) & 7]; if (n) fprintf(stderr, " %s", n); }
+    for (unsigned k = 0; k < 32; k++) { unsigned j = (vpw_last_piece_i + k) & 31; const char* n = vpw_last_piece[j]; if (n) fprintf(stderr, " %s(s0=%08X sp=%08X)", n, vpw_last_s0[j], vpw_last_sp[j]); }
     fprintf(stderr, "\n");
 }

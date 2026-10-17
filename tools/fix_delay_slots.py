@@ -17,7 +17,7 @@ for line in t.split('\n'):
     if m:
         sec = m.group(1); rom, vram = next((r, v) for n, r, v in secs if n == sec)
     f = re.search(r'\{ name = "(\w+)", vram = (0x[0-9A-Fa-f]+), size = (0x[0-9A-Fa-f]+) \}', line)
-    if f and sec not in ('hack_far',):
+    if f and sec not in ('hack_far', 'hack_match'):
         v, s = int(f.group(2), 16), int(f.group(3), 16)
         last = W(rom + (v + s - 4 - vram))
         if is_jump(last):

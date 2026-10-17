@@ -43,7 +43,6 @@ stubs = [
     "func_800384C0",
     "func_80038750",
     "func_800387B0",
-    "func_8003C5D0",
     "func_8002BBF0",
     "func_8002BD10",
     "func_80365224",
@@ -102,8 +101,3 @@ value = 0x03E00008  # jr $ra (was jr $t8/$t9: saved return address, see notes/ha
 
 
 
-
-[[patches.instruction]]
-func = "func_8003C500"
-vram = 0x8003C50C
-value = 0x0800F162  # [noreturn_hooks] jal->j 8003C588 (helper never returns)

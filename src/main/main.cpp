@@ -6,6 +6,7 @@
 #include <csignal>
 #ifndef _WIN32
 #include <execinfo.h>
+#include <sys/ucontext.h>
 #include <unistd.h>
 #endif
 #include <cstring>
@@ -785,11 +786,15 @@ static void register_texture_packs(const std::filesystem::path& app_folder, bool
 // [vpw64dx] Print a native backtrace on a crash (translated functions carry their N64 names),
 // then let the default action run. Bring-up diagnostics; harmless to keep.
 extern "C" void vpw_print_last_pieces();
-static void vpw64dx_crash_handler(int sig) {
+static void vpw64dx_crash_handler(int sig, siginfo_t* info, void* uctx) {
     void* frames[48];
     int n = backtrace(frames, 48);
     const char* name = sig == SIGSEGV ? "SIGSEGV" : sig == SIGBUS ? "SIGBUS" : "signal";
-    fprintf(stderr, "\n[vpw64dx] crash: %s, backtrace:\n", name);
+    fprintf(stderr, "\n[vpw64dx] crash: %s fault=%p", name, info ? info->si_addr : nullptr);
+#if defined(__APPLE__) && defined(__arm64__)
+    if (uctx) fprintf(stderr, " pc=%p", (void*)((ucontext_t*)uctx)->uc_mcontext->__ss.__pc);
+#endif
+    fprintf(stderr, ", backtrace:\n");
     backtrace_symbols_fd(frames, n, STDERR_FILENO);
     vpw_print_last_pieces();
     signal(sig, SIG_DFL);
@@ -799,8 +804,7 @@ static void vpw64dx_crash_handler(int sig) {
 
 int main(int argc, char** argv) {
 #ifndef _WIN32
-    signal(SIGSEGV, vpw64dx_crash_handler);
-    signal(SIGBUS, vpw64dx_crash_handler);
+    { struct sigaction sa = {}; sa.sa_sigaction = vpw64dx_crash_handler; sa.sa_flags = SA_SIGINFO; sigaction(SIGSEGV, &sa, nullptr); sigaction(SIGBUS, &sa, nullptr); }
 #endif
     bool show_console = false;
     bool dump_textures = false;

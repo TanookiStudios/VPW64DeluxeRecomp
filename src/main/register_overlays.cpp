@@ -30,4 +30,9 @@ extern "C" void load_section_by_rom(uint32_t rom, int32_t ram);
 extern "C" void recomp_load_extra_boot_overlays() {
     load_section_by_rom(0x2FA1704, 0x80364B30);   // hack_far
     load_section_by_rom(0x2FC6444, 0x8009FDD0);   // hack_tramp (lies inside hack_far's rom range)
+    // The match-time block (rom 0x2F1A9D4, 0x1100 bytes) is read into a heap buffer by hack code in
+    // ovl_b (0x8011E424) when a match starts. shortcut: assumes the allocator always hands out
+    // 0x801BB3A0 for it; if a match type ever logs "Failed to find function at 0x801Bxxxx", map it
+    // from the DMA hook instead.
+    load_section_by_rom(0x2F1A9D4, 0x801BB3A0);   // hack_match
 }
