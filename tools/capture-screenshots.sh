@@ -14,12 +14,12 @@ sed 's/WCW_AUTOBOOT="$rom" //' tools/capture.sh > work/capture_launcher.sh; chmo
 # Launcher pages: the scripted pad moves the highlight and presses A.
 work/capture_launcher.sh "$TMP/l1" 14 "" 12 > /dev/null 2>&1 || true
 cp "$TMP/l1/shot-12s.png" "$OUT/launcher-main.png"
-work/capture_launcher.sh "$TMP/l2" 14 "8000:down;8300:;9000:a;9300:" 12 > /dev/null 2>&1 || true
-cp "$TMP/l2/shot-12s.png" "$OUT/launcher-game.png"
-work/capture_launcher.sh "$TMP/l3" 14 "8000:down;8300:;8600:down;8900:;9500:a;9800:" 12 > /dev/null 2>&1 || true
-cp "$TMP/l3/shot-12s.png" "$OUT/launcher-settings.png"
-work/capture_launcher.sh "$TMP/l4" 15 "8000:down;8300:;8600:down;8900:;9200:down;9500:;10000:a;10300:" 13 > /dev/null 2>&1 || true
-cp "$TMP/l4/shot-13s.png" "$OUT/launcher-about.png"
+work/capture_launcher.sh "$TMP/l2" 19 "8000:up;8200:;8800:up;9000:;9600:up;9800:;10400:up;10600:;11200:right;11400:;12000:a;12200:;13000:r;13200:;13800:r;14000:;14600:r;14800:;15400:r;15600:" 17 > /dev/null 2>&1 || true
+cp "$TMP/l2/shot-17s.png" "$OUT/launcher-game.png"
+work/capture_launcher.sh "$TMP/l3" 16 "8000:up;8200:;8800:up;9000:;9600:up;9800:;10400:up;10600:;11200:right;11400:;12000:a;12200:" 14 > /dev/null 2>&1 || true
+cp "$TMP/l3/shot-14s.png" "$OUT/launcher-settings.png"
+work/capture_launcher.sh "$TMP/l4" 16 "8000:up;8200:;8800:up;9000:;9600:up;9800:;10400:a;10600:" 12 > /dev/null 2>&1 || true
+cp "$TMP/l4/shot-12s.png" "$OUT/launcher-about.png"
 
 # Title, menus, match card, entrance, the match, and this port's in-game menu (Back button).
 s="24000:start;24400:"

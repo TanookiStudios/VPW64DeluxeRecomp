@@ -64,6 +64,18 @@ recognized by name, and everything can be remapped in **Settings → Controls**.
 
 Settings and saves live in `~/Library/Application Support/VPW64Deluxe` on a Mac and `~/.config/VPW64Deluxe` on Linux.
 
+## The game this runs
+
+| | |
+|---|---|
+| Mod | **Virtual Pro Wrestling 64 Deluxe** (the title screen says "Virtual 64 Pro Wrestling Deluxe") |
+| Mod author | Lowwater, 2026 |
+| Mod website | (link to come) |
+| Based on | **Virtual Pro Wrestling 2: Ōdō Keishō** (AKI Corporation / Asmik Ace Entertainment, Nintendo 64, Japan, 2000) |
+| What the mod changes | a bigger roster across several promotions, new arenas, English menus, and many engine tweaks; the original game's code is kept and extended |
+
+This port runs the mod's ROM only. The retail Virtual Pro Wrestling 2 cartridge and the FreeM edition are different images and will not be accepted.
+
 ## Screenshots
 
 <p align="center">

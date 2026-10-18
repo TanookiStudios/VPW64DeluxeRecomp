@@ -36,3 +36,77 @@ index 56a0b70..2c343f0 100644
      prompt_state.prompt_controls->set_display(Display::Flex);
      prompt_state.confirm_button->set_display(Display::Flex);
      prompt_state.cancel_button->set_display(Display::Flex);
+diff --git a/recompui/src/elements/ui_theme.cpp b/recompui/src/elements/ui_theme.cpp
+index 3d679c1..405e9fd 100644
+--- a/recompui/src/elements/ui_theme.cpp
++++ b/recompui/src/elements/ui_theme.cpp
+@@ -10,14 +10,15 @@ float recompui::theme::border::radius_md = 12.0f;
+ float recompui::theme::border::radius_lg = 16.0f;
+ float recompui::theme::border::width = 1.1f;
+ 
++// [vpw64dx] house palette: navy backgrounds, one blue accent (the other Tanooki Studios launchers).
+ constexpr ThemeColorArray get_default_theme_color_array() {
+     ThemeColorArray colors;
+ 
+-    colors[(std::size_t)ThemeColor::Background1] = recompui::Color{2, 7, 18, 255};
+-    colors[(std::size_t)ThemeColor::Background2] = recompui::Color{7, 15, 34, 255};
+-    colors[(std::size_t)ThemeColor::Background3] = recompui::Color{18, 24, 38, 255};
++    colors[(std::size_t)ThemeColor::Background1] = recompui::Color{10, 14, 28, 255};
++    colors[(std::size_t)ThemeColor::Background2] = recompui::Color{13, 19, 38, 255};
++    colors[(std::size_t)ThemeColor::Background3] = recompui::Color{20, 28, 50, 255};
+     colors[(std::size_t)ThemeColor::BGOverlay] = recompui::Color{182, 194, 221, 26};
+-    colors[(std::size_t)ThemeColor::ModalOverlay] = recompui::Color{2, 7, 18, 229};
++    colors[(std::size_t)ThemeColor::ModalOverlay] = recompui::Color{10, 14, 28, 229};
+ 
+     colors[(std::size_t)ThemeColor::BGShadow] = recompui::Color{0, 0, 0, 89};
+     colors[(std::size_t)ThemeColor::BGShadow2] = recompui::Color{2, 7, 18, 184};
+@@ -32,23 +33,23 @@ constexpr ThemeColorArray get_default_theme_color_array() {
+     colors[(std::size_t)ThemeColor::TextA50] = recompui::Color{242, 242, 242, 128};
+     colors[(std::size_t)ThemeColor::TextA80] = recompui::Color{242, 242, 242, 204};
+ 
+-    colors[(std::size_t)ThemeColor::Primary] = recompui::Color{29, 93, 226, 255};
+-    colors[(std::size_t)ThemeColor::PrimaryL] = recompui::Color{167, 191, 241, 255};
+-    colors[(std::size_t)ThemeColor::PrimaryD] = recompui::Color{0, 38, 117, 255};
+-    colors[(std::size_t)ThemeColor::PrimaryA5] = recompui::Color{29, 93, 226, 13};
+-    colors[(std::size_t)ThemeColor::PrimaryA20] = recompui::Color{29, 93, 226, 51};
+-    colors[(std::size_t)ThemeColor::PrimaryA30] = recompui::Color{29, 93, 226, 77};
+-    colors[(std::size_t)ThemeColor::PrimaryA50] = recompui::Color{29, 93, 226, 128};
+-    colors[(std::size_t)ThemeColor::PrimaryA80] = recompui::Color{29, 93, 226, 204};
+-
+-    colors[(std::size_t)ThemeColor::Secondary] = recompui::Color{247, 158, 8, 255};
+-    colors[(std::size_t)ThemeColor::SecondaryL] = recompui::Color{255, 215, 148, 255};
+-    colors[(std::size_t)ThemeColor::SecondaryD] = recompui::Color{224, 141, 0, 255};
+-    colors[(std::size_t)ThemeColor::SecondaryA5] = recompui::Color{247, 158, 8, 13};
+-    colors[(std::size_t)ThemeColor::SecondaryA20] = recompui::Color{247, 158, 8, 51};
+-    colors[(std::size_t)ThemeColor::SecondaryA30] = recompui::Color{247, 158, 8, 77};
+-    colors[(std::size_t)ThemeColor::SecondaryA50] = recompui::Color{247, 158, 8, 128};
+-    colors[(std::size_t)ThemeColor::SecondaryA80] = recompui::Color{247, 158, 8, 204};
++    colors[(std::size_t)ThemeColor::Primary] = recompui::Color{47, 128, 255, 255};
++    colors[(std::size_t)ThemeColor::PrimaryL] = recompui::Color{150, 190, 255, 255};
++    colors[(std::size_t)ThemeColor::PrimaryD] = recompui::Color{20, 70, 170, 255};
++    colors[(std::size_t)ThemeColor::PrimaryA5] = recompui::Color{47, 128, 255, 13};
++    colors[(std::size_t)ThemeColor::PrimaryA20] = recompui::Color{47, 128, 255, 51};
++    colors[(std::size_t)ThemeColor::PrimaryA30] = recompui::Color{47, 128, 255, 77};
++    colors[(std::size_t)ThemeColor::PrimaryA50] = recompui::Color{47, 128, 255, 128};
++    colors[(std::size_t)ThemeColor::PrimaryA80] = recompui::Color{47, 128, 255, 204};
++
++    colors[(std::size_t)ThemeColor::Secondary] = recompui::Color{47, 128, 255, 255};
++    colors[(std::size_t)ThemeColor::SecondaryL] = recompui::Color{150, 190, 255, 255};
++    colors[(std::size_t)ThemeColor::SecondaryD] = recompui::Color{20, 70, 170, 255};
++    colors[(std::size_t)ThemeColor::SecondaryA5] = recompui::Color{47, 128, 255, 13};
++    colors[(std::size_t)ThemeColor::SecondaryA20] = recompui::Color{47, 128, 255, 51};
++    colors[(std::size_t)ThemeColor::SecondaryA30] = recompui::Color{47, 128, 255, 77};
++    colors[(std::size_t)ThemeColor::SecondaryA50] = recompui::Color{47, 128, 255, 128};
++    colors[(std::size_t)ThemeColor::SecondaryA80] = recompui::Color{47, 128, 255, 204};
+ 
+     colors[(std::size_t)ThemeColor::Warning] = recompui::Color{255, 254, 0, 255};
+     colors[(std::size_t)ThemeColor::WarningL] = recompui::Color{255, 254, 143, 255};
+@@ -68,7 +69,7 @@ constexpr ThemeColorArray get_default_theme_color_array() {
+     colors[(std::size_t)ThemeColor::DangerA50] = recompui::Color{255, 53, 31, 128};
+     colors[(std::size_t)ThemeColor::DangerA80] = recompui::Color{255, 53, 31, 204};
+ 
+-    colors[(std::size_t)ThemeColor::Success] = recompui::Color{40, 238, 32, 255};
++    colors[(std::size_t)ThemeColor::Success] = recompui::Color{61, 220, 132, 255};
+     colors[(std::size_t)ThemeColor::SuccessL] = recompui::Color{155, 247, 151, 255};
+     colors[(std::size_t)ThemeColor::SuccessD] = recompui::Color{18, 157, 12, 255};
+     colors[(std::size_t)ThemeColor::SuccessA5] = recompui::Color{40, 238, 32, 13};

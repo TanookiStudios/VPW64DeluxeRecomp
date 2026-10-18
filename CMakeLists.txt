@@ -119,7 +119,11 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRE
     COMMAND file_to_c ${CMAKE_SOURCE_DIR}/assets/icon/vpw64dx-256.png icon_bytes ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
     DEPENDS ${CMAKE_SOURCE_DIR}/assets/icon/vpw64dx-256.png file_to_c
 )
-target_sources(VPW64Deluxe PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/signature_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/signature_bytes.h
+    COMMAND file_to_c ${CMAKE_SOURCE_DIR}/assets/signature.png signature_bytes ${CMAKE_CURRENT_BINARY_DIR}/signature_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/signature_bytes.h
+    DEPENDS ${CMAKE_SOURCE_DIR}/assets/signature.png file_to_c
+)
+target_sources(VPW64Deluxe PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/signature_bytes.c)
 if (WIN32)
     target_sources(VPW64Deluxe PRIVATE ${CMAKE_SOURCE_DIR}/assets/icon/vpw64dx.rc)   # Explorer and taskbar icon
 endif()
@@ -128,6 +132,7 @@ set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
     ${CMAKE_SOURCE_DIR}/src/main/register_overlays.cpp
     ${CMAKE_SOURCE_DIR}/src/game/recomp_api.cpp
+    ${CMAKE_SOURCE_DIR}/src/main/launcher.cpp
     ${CMAKE_SOURCE_DIR}/src/game/raytracing.cpp
     ${CMAKE_SOURCE_DIR}/src/ra/ra_client.cpp
     ${CMAKE_SOURCE_DIR}/rsp/vpw2_audio.cpp
@@ -154,6 +159,8 @@ target_include_directories(VPW64Deluxe PRIVATE
     ${RT64DIR}/src
     ${FRONTEND}/recompinput/include
     ${FRONTEND}/recompui/include
+    ${FRONTEND}/recompui/src
+    ${FRONTEND}/recompui/lib/RmlUi/Include
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 

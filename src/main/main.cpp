@@ -334,24 +334,12 @@ static void update_scripted_pad() {
 
 // ---------------- this port's own Game tab (cheats) and About text ----------------
 static const std::string vpw64dx_game_tab_id = "game";
-static const char* vpw64dx_about_text =
-    "Hi, I'm Maddie. I make apps and games on my own at Tanooki Studios.<br/><br/>"
-    "Virtual Pro Wrestling 2 is the wrestling game I kept hearing was the best one on the Nintendo 64, "
-    "and the Deluxe fan edition adds even more to it. I wanted it to run on a modern computer the way "
-    "it should: sharp, with controllers that just work, and a few cheats for when the ref is slow.<br/><br/>"
-    "It's free, and it'll stay free. You bring your own copy of the game; nothing from the original "
-    "cartridge ships with this. It isn't made by or affiliated with AKI, Asmik Ace, the Deluxe edition's "
-    "authors or Nintendo.<br/><br/>"
-    "Making apps (including some decomps) is how I pay my bills. If this game brought you some nostalgia "
-    "and you ever got pinned at 29:59 of a thirty-minute match, feel free to drop me a tiny tip. "
-    "It really helps!";
-
 namespace cheat {
     inline const std::string special_ready = "special_ready";
     inline const std::string weak_opponents = "weak_opponents";
 }
 static void vpw64dx_create_game_tab() {
-    recomp::config::Config& c = recompui::config::create_config_tab("Game", vpw64dx_game_tab_id, false);
+    recomp::config::Config& c = recompui::config::create_config_tab("Cheats", vpw64dx_game_tab_id, false);
     c.add_bool_option(cheat::special_ready, "Special always ready (player 1)",
         "Player 1's SPIRIT bar stays maxed out and lit, so the special is always there.", false);
     c.add_bool_option(cheat::weak_opponents, "Weak opponents",
@@ -1143,10 +1131,10 @@ int main(int argc, char** argv) {
     // now" prompt to enable it in-game). The slider must be on — recompinput::update_rumble
     // is a no-op when has_rumble_strength is false.
     general_options.has_rumble_strength = true;
-    recompui::config::create_general_tab(general_options);
+    recompui::config::create_general_tab(general_options, "System");
     recompui::config::create_graphics_tab();
     recompui::config::create_controls_tab();
-    recompui::config::create_sound_tab();
+    recompui::config::create_sound_tab("Audio");
     vpw64dx_create_game_tab();
     // The Mods tab must be created here, not just selected. The launcher's Mods entry
     // (add_mods_option) only calls config::set_tab(config::mods::id); without this the
@@ -1177,41 +1165,8 @@ int main(int argc, char** argv) {
         // and .nrm scanning were all running before this option existed — only the UI
         // entry point was missing.
         recompui::register_launcher_init_callback([](recompui::LauncherMenu* menu) {
-            // Header mark: the port's own icon (assets/icon, drawn by us) above the buttons.
-            // The image must be queued before the Image element referencing its src is created.
-            menu->remove_default_title();
-            static const std::string mark_src = "?/game/tanooki.vpw64deluxe/mark";
-            recompui::queue_image_from_bytes_file(mark_src, std::vector<char>(icon_bytes, icon_bytes + icon_bytes_size));
-            auto context = recompui::get_current_context();
-            recompui::Image* mark = context.create_element<recompui::Image>(menu, mark_src);
-            mark->set_position(recompui::Position::Absolute);
-            mark->set_top(22.0f, recompui::Unit::Percent);
-            mark->set_left(50.0f, recompui::Unit::Percent);
-            mark->set_translate_2D(-50.0f, -50.0f, recompui::Unit::Percent);
-            mark->set_width(180.0f);
-            mark->set_height(180.0f);
-
-            auto* game_options_menu = menu->init_game_options_menu(
-                supported_games[0].game_id,
-                supported_games[0].mod_game_id,
-                supported_games[0].display_name,
-                supported_games[0].thumbnail_bytes,
-                recompui::GameOptionsMenuLayout::Center);
-            game_options_menu->add_start_game_or_load_rom_option();
-            // House style: Game (this port's own options), Settings, About.
-            game_options_menu->add_option("Game", []() {
-                recompui::update_game_mod_id(supported_games[0].mod_game_id);
-                recompui::config::set_tab(vpw64dx_game_tab_id);
-                recompui::hide_all_contexts();
-                recompui::config::open();
-            });
-            game_options_menu->add_settings_option();
-            game_options_menu->add_option("About", []() {
-                recompui::open_choice_prompt("About", vpw64dx_about_text, "Leave a Tip", "Close",
-                    []() { SDL_OpenURL("https://tanookistudios.com/SupportMe"); }, []() {},
-                    recompui::ButtonStyle::Success, recompui::ButtonStyle::Secondary, false);
-            });
-            game_options_menu->add_exit_option();
+            extern void vpw64dx_build_launcher(recompui::LauncherMenu*, const std::u8string&, const std::string&);
+            vpw64dx_build_launcher(menu, supported_games[0].game_id, supported_games[0].mod_game_id);
         });
     }
 
