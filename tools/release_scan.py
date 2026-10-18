@@ -4,6 +4,7 @@ anything made from it.
 
     tools/release_scan.py <folder>        scan one package folder or app bundle
     tools/release_scan.py --tracked       scan every file git tracks in this repo
+    tools/release_scan.py --kit <folder>  the private Windows build kit: only the ROM-byte checks (it carries vendor/ and generated C on purpose)
     tools/release_scan.py --self-test     prove the scan can fail
 
 Checks: no ROM-type or save files, no generated C (RecompiledFuncs), no file equal to the
@@ -34,15 +35,16 @@ def load_rom():
     if len(samples) < 10: sys.exit("release_scan: could not pick ROM samples")
     return blob, samples
 
-def scan_files(paths, rom, samples):
+def scan_files(paths, rom, samples, kit=False):
     problems, nbytes = [], 0
     rom_sha = hashlib.sha256(rom).hexdigest()
     for path in paths:
         rel = os.path.relpath(path, ROOT) if path.startswith(ROOT) else path
         parts = set(rel.split(os.sep))
-        if parts & BAD_DIRS and not rel.startswith("tools"): problems.append(f"{rel}: folder that never ships")
         if os.path.splitext(rel)[1].lower() in BAD_EXT: problems.append(f"{rel}: ROM or save file type")
-        if rel.endswith((".c",)) and "RecompiledFuncs" in rel: problems.append(f"{rel}: generated code")
+        if not kit:
+            if parts & BAD_DIRS and not rel.startswith("tools"): problems.append(f"{rel}: folder that never ships")
+            if rel.endswith((".c",)) and "RecompiledFuncs" in rel: problems.append(f"{rel}: generated code")
         try: data = open(path, "rb").read()
         except (IsADirectoryError, FileNotFoundError): continue
         nbytes += len(data)
@@ -75,10 +77,12 @@ def self_test(rom, samples):
 def main():
     rom, samples = load_rom()
     if sys.argv[1:] == ["--self-test"]: return self_test(rom, samples)
+    kit = False
     if sys.argv[1:] == ["--tracked"]: paths, what = tracked(), "tracked files"
+    elif len(sys.argv) == 3 and sys.argv[1] == "--kit" and os.path.isdir(sys.argv[2]): paths, what, kit = list(walk(sys.argv[2])), sys.argv[2], True
     elif len(sys.argv) == 2 and os.path.isdir(sys.argv[1]): paths, what = list(walk(sys.argv[1])), sys.argv[1]
     else: sys.exit(__doc__)
-    problems, nbytes = scan_files(paths, rom, samples)
+    problems, nbytes = scan_files(paths, rom, samples, kit)
     if problems:
         print("ROM SAFETY SCAN FAILED, do not ship or push this:", file=sys.stderr)
         for p in problems: print("  " + p, file=sys.stderr)

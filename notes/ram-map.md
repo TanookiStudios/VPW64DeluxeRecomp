@@ -14,9 +14,9 @@ match card, Start/B/A from 58 s; the bell rings about 91 s after launch).
 - Candidates that grow 512 per 8 s (16-bit): 0x8007DF00, 0x8007DF40 (7747 at 96 s: a global
   counter, running since long before the match), 0x8009F118 (same), **0x800DD4A0** (260 at 96 s,
   772 at 104 s, 1284 at 112 s: matches the bell at ~92 s, so this is the match's own frame counter).
-- 0x800DD4A0 lives in memory the match allocates: poking it from boot corrupts the audio
-  command list that occupies that spot before the match (RSP audio task fault at the title).
-  Poke only once the match is on (`VPW_POKE_AFTER`).
+- 0x800DD4A0 RULED OUT: holding it at 0 kills the audio microcode task even when the poke starts
+  after the bell (`VPW_POKE_AFTER=97000`, work/run88): it is part of the audio command list, and
+  its +512/8 s is the audio sequencer's own tick, not the match clock.
 - Dead ends: no byte, halfword or word anywhere holds the displayed seconds (5 → 13 → 21) or
   counts down from the 30-minute limit in frames.
 

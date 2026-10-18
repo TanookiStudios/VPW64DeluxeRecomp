@@ -11,12 +11,12 @@ cd "$(dirname "$0")/.."
 PREFIX=$(mkdir -p "$1" && cd "$1" && pwd); shift
 SDL2_VER=2.30.11
 FT_VER=2-13-3
-SRC=work/deps-src; mkdir -p "$SRC"
+SRC=$PREFIX-src; mkdir -p "$SRC"   # one source tree per target (the Linux container cannot overwrite the Mac one)
 fetch() { [ -f "$SRC/$2" ] || curl -fsSL "$1" -o "$SRC/$2"; }
 fetch "https://github.com/libsdl-org/SDL/releases/download/release-$SDL2_VER/SDL2-$SDL2_VER.tar.gz" sdl2.tar.gz
 fetch "https://github.com/freetype/freetype/archive/refs/tags/VER-$FT_VER.tar.gz" freetype.tar.gz
 rm -rf "$SRC/SDL2-$SDL2_VER" "$SRC/freetype-VER-$FT_VER"
-tar -xzf "$SRC/sdl2.tar.gz" -C "$SRC"
+tar -xzf "$SRC/sdl2.tar.gz" -C "$SRC" --exclude="*/android-project*"   # (symbolic links the container mount refuses)
 tar -xzf "$SRC/freetype.tar.gz" -C "$SRC"
 
 cmake -S "$SRC/SDL2-$SDL2_VER" -B "$SRC/SDL2-$SDL2_VER/build" -G Ninja -DCMAKE_BUILD_TYPE=Release \
