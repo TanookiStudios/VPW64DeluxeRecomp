@@ -10,6 +10,8 @@
   <b>Free. Bring your own copy of the game.</b>
 </p>
 
+**Website:** [vpw64deluxe.tanookistudios.com](https://vpw64deluxe.tanookistudios.com)
+
 ## Download
 
 | Your computer | Download | |
