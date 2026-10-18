@@ -503,6 +503,24 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
             buf[i + 1] = static_cast<int16_t>(std::lround(audio_data[i + 0] * volume));
         }
     }
+    // Bring-up diagnostic: VPW_AUDIO_DUMP=<file.wav> records exactly what is sent to the speakers.
+    static FILE* dump = nullptr; static bool dump_tried = false; static uint32_t dump_bytes = 0;
+    if (!dump_tried) {
+        dump_tried = true;
+        if (const char* path = getenv("VPW_AUDIO_DUMP")) {
+            dump = fopen(path, "wb");
+            if (dump) { uint8_t hdr[44] = {}; fwrite(hdr, 1, 44, dump); }
+        }
+    }
+    if (dump) {
+        fwrite(buf.data(), sizeof(int16_t), sample_count, dump); dump_bytes += (uint32_t)(sample_count * sizeof(int16_t));
+        // Rewrite the header each batch so the file is valid even if the program is killed.
+        long pos = ftell(dump); fseek(dump, 0, SEEK_SET);
+        uint32_t rate = g_sample_rate, byte_rate = rate * 4, riff = 36 + dump_bytes;
+        uint8_t h[44] = {'R','I','F','F', 0,0,0,0, 'W','A','V','E', 'f','m','t',' ', 16,0,0,0, 1,0, 2,0, 0,0,0,0, 0,0,0,0, 4,0, 16,0, 'd','a','t','a', 0,0,0,0};
+        memcpy(h + 4, &riff, 4); memcpy(h + 24, &rate, 4); memcpy(h + 28, &byte_rate, 4); memcpy(h + 40, &dump_bytes, 4);
+        fwrite(h, 1, 44, dump); fseek(dump, pos, SEEK_SET); fflush(dump);
+    }
     uint32_t queued_frames_before = (uint32_t)get_frames_remaining();
     if (g_audio_device) {
         SDL_QueueAudio(g_audio_device, buf.data(), (Uint32)(sample_count * sizeof(int16_t)));
