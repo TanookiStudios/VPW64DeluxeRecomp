@@ -93,15 +93,22 @@ extern "C" void vpw_lookup_trace(const char* from, int32_t addr, int32_t s1, int
 }
 
 // [vpw64dx] ring of the last hack-section pieces entered (tools/lastpiece.py), printed on a crash.
-const char* vpw_last_piece[32] = {};
-static uint32_t vpw_last_s0[32], vpw_last_sp[32];
+const char* vpw_last_piece[128] = {};
+static uint32_t vpw_last_s0[128], vpw_last_sp[128], vpw_last_s3[128];
 static unsigned vpw_last_piece_i = 0;
 extern "C" void vpw_note_piece(const char* name, uint32_t s0, uint32_t sp) {
-    if (sp < 0x8008C000u || sp > 0x8008DE20u) return;   // bring-up: main thread's stack only
-    unsigned k = vpw_last_piece_i++ & 31; vpw_last_piece[k] = name; vpw_last_s0[k] = s0; vpw_last_sp[k] = sp;
+    if (sp < 0x8008C000u || sp > 0x8008E000u) return;   // bring-up: main thread stack (and a little above it, to catch over-pops)
+    unsigned k = vpw_last_piece_i++ & 127; vpw_last_piece[k] = name; vpw_last_s0[k] = s0; vpw_last_sp[k] = sp;
 }
 extern "C" void vpw_print_last_pieces() {
     fprintf(stderr, "[vpw64dx] last hack pieces (oldest first):");
-    for (unsigned k = 0; k < 32; k++) { unsigned j = (vpw_last_piece_i + k) & 31; const char* n = vpw_last_piece[j]; if (n) fprintf(stderr, " %s(s0=%08X sp=%08X)", n, vpw_last_s0[j], vpw_last_sp[j]); }
+    for (unsigned k = 0; k < 128; k++) { unsigned j = (vpw_last_piece_i + k) & 127; const char* n = vpw_last_piece[j]; if (n) fprintf(stderr, " %s(s3=%08X sp=%08X)", n, vpw_last_s0[j], vpw_last_sp[j]); }
     fprintf(stderr, "\n");
+}
+
+// [vpw64dx] Bring-up: report the first time a known invariant breaks, with the recent piece history.
+extern "C" void vpw_tripwire(const char* what, uint32_t a, uint32_t sp, uint32_t ra, uint32_t s0) {
+    static bool once = false; if (once) return; once = true;
+    fprintf(stderr, "\n[vpw64dx] TRIPWIRE: %s: value=%08X sp=%08X ra=%08X s0=%08X\n", what, a, sp, ra, s0);
+    vpw_print_last_pieces();
 }
