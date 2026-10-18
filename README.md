@@ -61,13 +61,20 @@ recognized by name, and everything can be remapped in **Settings → Controls**.
 - **Launcher.** Set everything before you play: display, sound, controls, cheats.
 - **In-game menu (Esc).** Change settings or quit without losing your place.
 - **Saves.** The game's own saves work, kept in your settings folder with automatic backups.
-- **Cheats (Game tab).** Infinite spirit for player 1, and stop the match clock.
+- **Cheats (Game tab).** Special always ready for player 1 (the SPIRIT bar stays maxed and lit), and weak opponents (everyone else has no spirit: soft hits, no specials, easy pins). Want an opponent who never fights back? Pick **1P vs 2P** before the wrestler select and leave player 2 alone.
 
 Settings and saves live in `~/Library/Application Support/VPW64Deluxe` on a Mac and `~/.config/VPW64Deluxe` on Linux.
 
 ## Screenshots
 
-See `docs/screenshots/`.
+<p align="center">
+  <img src="docs/screenshots/match-1.png" width="400" alt="A match">
+  <img src="docs/screenshots/match-2.png" width="400" alt="Lock-up"><br>
+  <img src="docs/screenshots/ring-entrance.png" width="400" alt="Ring entrance">
+  <img src="docs/screenshots/wrestler-select.png" width="400" alt="Wrestler select"><br>
+  <img src="docs/screenshots/launcher-main.png" width="400" alt="Launcher">
+  <img src="docs/screenshots/launcher-game.png" width="400" alt="Game tab with the cheats">
+</p>
 
 ## Building it yourself
 
