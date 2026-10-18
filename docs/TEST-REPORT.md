@@ -34,12 +34,26 @@ running to the end of the run (a frozen game stops producing sound).
   back each time.
 - **Pause menu** in a match: continue, rematch, quit match, spirit meter, referee, replay.
 
+## Second round (2026-10-18 evening)
+
+- **Two controllers:** a 1P vs 2P match with two scripted pads. Pad 2 walked its wrestler across the ring
+  while pad 1 stood still, then pad 1 walked the other wrestler to the far ropes. Both pads are assigned
+  and drive their own wrestler.
+- **Long Tournament run (15 minutes):** found a real crash. Choosing **Quit Match** from the pause menu
+  crashed the game every time (the menus reloaded without part of the mod's code). Fixed; after the fix,
+  quitting returns to the Tournament bracket, Skip Match advances the bracket and Watch starts the next match.
+  Replay, Referee and Rematch from the pause menu were already fine.
+- **Linux:** booted the Linux download in an Ubuntu 22.04 container on a virtual screen with software
+  graphics (`tools/linux_smoke.sh`). Found a real bug: the window was not created for Vulkan graphics, so the
+  Linux build crashed about a second after starting. Fixed; it now reaches the title screen and quits cleanly.
+
 ## Not tested yet
 
-- Finishing a whole Royal Road, League or Tournament run (each needs many matches).
-- Every Edit Mode screen saving a new wrestler and using it in a match.
-- Two real controllers at once.
-- Linux and Windows builds on real machines.
+- Playing a Royal Road, League or Tournament through to the very end. The Tournament bracket advanced through
+  skips and a watched match; my scripted presses on the bracket screen are sensitive to its animation timing,
+  so I could not reliably drive it to a champion.
+- Making a new wrestler in Edit Mode and using him in a match (the editor screens all open and respond).
+- Linux on a real computer with a graphics card; Windows (built on a Windows PC from the build kit).
 
 Testing note: the game repeats a held button after about a quarter second, so scripted presses must be short
 taps (100 ms) or they count twice.
