@@ -7,6 +7,7 @@
 #ifndef _WIN32
 #include <execinfo.h>
 #include <sys/ucontext.h>
+#include <pthread.h>
 #include <unistd.h>
 #endif
 #include <cstring>
@@ -217,7 +218,7 @@ ultramodern::renderer::WindowHandle create_window(ultramodern::gfx_callbacks_t::
     uint32_t flags = SDL_WINDOW_RESIZABLE;
 #if defined(__APPLE__)
     flags |= SDL_WINDOW_METAL;   // RT64 renders through Metal on macOS (as Zelda64Recomp does)
-#elif defined(RT64_SDL_WINDOW_VULKAN)
+#elif defined(__linux__)   // RT64 renders through Vulkan on Linux; SDL must create a Vulkan-capable window (was a CMake-only name, never defined here)
     flags |= SDL_WINDOW_VULKAN;
 #endif
     window = SDL_CreateWindow("Virtual Pro Wrestling 64 Deluxe",
@@ -908,7 +909,27 @@ static void vpw64dx_crash_handler(int sig, siginfo_t* info, void* uctx) {
     fprintf(stderr, "\n[vpw64dx] crash: %s fault=%p", name, info ? info->si_addr : nullptr);
 #if defined(__APPLE__) && defined(__arm64__)
     if (uctx) fprintf(stderr, " pc=%p", (void*)((ucontext_t*)uctx)->uc_mcontext->__ss.__pc);
+#elif defined(__linux__) && defined(__x86_64__)
+    if (uctx) {
+        uintptr_t pc = (uintptr_t)((ucontext_t*)uctx)->uc_mcontext.gregs[REG_RIP];
+        fprintf(stderr, " pc=%p", (void*)pc);
+        // Which mapped file holds the pc, and its offset in it (resolve offline with nm / addr2line).
+        if (FILE* maps = fopen("/proc/self/maps", "r")) {
+            char line[512];
+            while (fgets(line, sizeof line, maps)) {
+                uintptr_t lo, hi, off; char perms[8], path[400] = "";
+                if (sscanf(line, "%lx-%lx %7s %lx %*s %*s %399s", &lo, &hi, perms, &off, path) >= 4 && pc >= lo && pc < hi) {
+                    fprintf(stderr, " in %s+0x%lx", path[0] ? path : "[anon]", (unsigned long)(pc - lo + off));
+                    break;
+                }
+            }
+            fclose(maps);
+        }
+        char tname[32] = ""; pthread_getname_np(pthread_self(), tname, sizeof tname);
+        fprintf(stderr, " thread=%s", tname);
+    }
 #endif
+    fflush(stderr);
     fprintf(stderr, ", backtrace:\n");
     backtrace_symbols_fd(frames, n, STDERR_FILENO);
     vpw_print_last_pieces();

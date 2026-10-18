@@ -24,7 +24,7 @@ for ((t = t + 1500; t < secs * 1000 - 3000; t += 2500)); do
     else s="${s};${t}:a;$((t + 300)):"; fi
     k=$((k + 1))
 done
-shots=(); for ((x = 20; x < secs; x += 12)); do shots+=("$x"); done
+shots=(); step=${SHOT_EVERY:-12}; for ((x = 20; x < secs; x += step)); do shots+=("$x"); done
 sed 's/WCW_AUTOBOOT=/WCW_AUDIO_LOG=1 WCW_AUTOBOOT=/' tools/capture.sh > work/capture_explore.sh; chmod +x work/capture_explore.sh
 work/capture_explore.sh "$out" "$secs" "$s" "${shots[@]}" > "$out/capture.out" 2>&1 || true
 log=$out/run.log
