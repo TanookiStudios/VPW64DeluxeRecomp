@@ -18,8 +18,7 @@
 | **Linux** (64-bit, desktops from 2022 on) | [**VPW64Deluxe-Linux.tar.gz**](https://github.com/TanookiStudios/VPW64DeluxeRecomp/releases/latest/download/VPW64Deluxe-Linux.tar.gz) | |
 
 Every version and its notes are on the [Releases page](https://github.com/TanookiStudios/VPW64DeluxeRecomp/releases).
-A Windows version is not available yet: this engine's Windows side needs Microsoft's own compiler
-and shader tools, which cannot run on the Mac that builds these releases.
+A Windows version is coming in a later release (it has to be built on a Windows PC: this engine's Windows side needs Microsoft's own compiler and shader tools).
 
 ## How to play
 
