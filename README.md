@@ -41,16 +41,20 @@ No game files come with this download. The ROM that works is:
 
 ### Controls
 
-| Nintendo 64 | Keyboard | Controller |
-|---|---|---|
-| Control stick / D-pad | Arrow keys | Left stick / D-pad |
-| A | Z | A (bottom button) |
-| B | X | B (right button) |
-| C buttons | I J K L | Right stick |
-| L / R | Q / E | Triggers |
-| Z | Left Shift | Left stick click |
-| Start | Enter | Start |
-| **This port's menu** | **Esc** | **Home / Guide button** |
+| Nintendo 64 | Keyboard | Controller (Xbox names) | In the ring |
+|---|---|---|---|
+| D-pad | W A S D | Left stick or D-pad | Move |
+| Control stick | I J K L | Right stick | Taunt |
+| A | Space | A | Grapple |
+| B | Left Shift | X | Strike |
+| C-Up | Up arrow | Y | Climb / flip |
+| C-Down | Down arrow | B | Run |
+| C-Left / C-Right | Left / Right arrows | LB / RB | Switch focus |
+| L | E | Left trigger | Duck / dodge |
+| R | R | Right trigger | Block |
+| Z | Q | Left stick click | |
+| Start | Enter | Start | Pause |
+| **This port's menu** | **Esc** | **Back / View** | |
 
 **Controllers:** plug one in and play, no setup. Xbox, PlayStation, Switch Pro and most other pads are
 recognized by name, and everything can be remapped in **Settings → Controls**.

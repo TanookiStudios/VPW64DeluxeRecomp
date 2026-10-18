@@ -225,7 +225,7 @@ void vpw64dx_build_launcher(LauncherMenu* menu, const std::u8string& game_id, co
         section(ctx, player, "Player 1");
         Label* pl = ctx.create_element<Label>(player, "Keyboard or any controller, no setup. Plug a pad in and it is player 1; the keyboard keeps working alongside it.", theme::Typography::Body);
         pl->set_color(dim);
-        ctx.create_element<Label>(player, "Keyboard: arrows move, Z is A, X is B, I J K L are the C buttons, Q and E are L and R, Left Shift is Z, Enter is Start. Esc opens this port's menu in the game.", theme::Typography::Body);
+        ctx.create_element<Label>(player, "Keyboard: W A S D move, Space is A, Left Shift is B, the arrow keys are the C buttons, I J K L are the control stick, E and R are L and R, Q is Z, Enter is Start. Esc (or Back on a controller) opens this port's menu in the game.", theme::Typography::Body);
         Button* configure = ctx.create_element<Button>(player, "Configure controls", ButtonStyle::Secondary, ButtonSize::Medium);
         configure->set_margin_top(12.0f);
         configure->add_pressed_callback([]() { open_settings_tab(config::controls::id); });
