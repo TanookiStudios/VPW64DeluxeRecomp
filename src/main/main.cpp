@@ -490,7 +490,9 @@ void queue_samples(int16_t* audio_data, size_t sample_count) {
     // takes effect immediately).
     static std::vector<int16_t> buf;
     buf.resize(sample_count);
-    const float volume = std::clamp(static_cast<float>(recompui::config::sound::get_main_volume()) / 100.0f, 0.0f, 1.0f);
+    // VPW_MUTE=1 (set by the test harness): silent output, the audio pipeline keeps running.
+    static const bool mute = getenv("VPW_MUTE") != nullptr;
+    const float volume = mute ? 0.0f : std::clamp(static_cast<float>(recompui::config::sound::get_main_volume()) / 100.0f, 0.0f, 1.0f);
     if (volume >= 1.0f) {
         for (size_t i = 0; i + 1 < sample_count; i += 2) {
             buf[i + 0] = audio_data[i + 1];

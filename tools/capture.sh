@@ -17,10 +17,15 @@ run=$HOME/Claude/vpw64-run; rom=$HOME/Claude/vpw64-rom/VPW64Deluxe.z64
 [ -x build/VPW64Deluxe ] || { echo "build first: cmake --build build --target VPW64Deluxe" >&2; exit 1; }
 [ -f "$rom" ] || { echo "ROM copy missing: $rom" >&2; exit 1; }
 pkill -f "$run/VPW64Deluxe" 2>/dev/null || true; sleep 0.5
+# Test runs use a throwaway settings-and-saves folder (portable mode: everything lives next to the
+# program), wiped each run, so every test starts from a fresh save and never touches the player's own.
+# VPW_KEEP_SAVE=1 keeps the previous run's save (for testing that saves survive a relaunch).
+mkdir -p "$run"; [ -n "${VPW_KEEP_SAVE:-}" ] || rm -rf "$run/saves" "$run"/*.json "$run/mod_config" "$run/mods"
+touch "$run/portable.txt"
 mkdir -p "$run" && rm -f "$run/VPW64Deluxe" && cp build/VPW64Deluxe "$run/" && rm -rf "$run/assets" && cp -R build/assets "$run/assets" && cp build/recompcontrollerdb.txt "$run/"
 exe=$run/VPW64Deluxe
 log=$(cd "$out" && pwd)/run.log; rm -f "$log"
-(cd "$run" && WCW_AUTOBOOT="$rom" WCW_QUIT_AFTER="$secs" VPW_INPUT_SCRIPT="$script" \
+(cd "$run" && VPW_MUTE=1 WCW_AUTOBOOT="$rom" WCW_QUIT_AFTER="$secs" VPW_INPUT_SCRIPT="$script" \
     "$exe" > "$log" 2>&1) &
 pid=$!
 start=$(date +%s)
