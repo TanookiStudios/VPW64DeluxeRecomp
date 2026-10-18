@@ -336,11 +336,14 @@ static void update_scripted_pad() {
 // ---------------- this port's own Game tab (cheats) and About text ----------------
 static const std::string vpw64dx_game_tab_id = "game";
 namespace cheat {
+    inline const std::string unlock_wrestlers = "unlock_wrestlers";
     inline const std::string special_ready = "special_ready";
     inline const std::string weak_opponents = "weak_opponents";
 }
 static void vpw64dx_create_game_tab() {
     recomp::config::Config& c = recompui::config::create_config_tab("Cheats", vpw64dx_game_tab_id, false);
+    c.add_bool_option(cheat::unlock_wrestlers, "Unlock all wrestlers",
+        "Every hidden wrestler is selectable right away. Your save is not changed: switch this off and they lock again.", false);
     c.add_bool_option(cheat::special_ready, "Special always ready (player 1)",
         "Player 1's SPIRIT bar stays maxed out and lit, so the special is always there.", false);
     c.add_bool_option(cheat::weak_opponents, "Weak opponents",
@@ -351,6 +354,8 @@ static bool vpw64dx_cheat_on(const std::string& id) {
     if (!have_tab) { try { recompui::config::get_config(vpw64dx_game_tab_id); have_tab = true; } catch (...) { return false; } }
     return std::get<bool>(recompui::config::get_config(vpw64dx_game_tab_id).get_option_value(id));
 }
+// Read by the game's own unlock check (hand edit in tools/hand_edits.py, func_800F4668).
+extern "C" int vpw64dx_unlock_all_wrestlers(void) { return vpw64dx_cheat_on(cheat::unlock_wrestlers) ? 1 : 0; }
 extern uint8_t* g_ww_rdram;
 // Proof in notes/ram-map.md. Player slots: 4 blocks of 0x314 bytes from 0x8016C440 (the game's own
 // per-slot loop steps by 0x314); the SPIRIT byte is at +0x3B (0x8016C47B = the GameShark "P1 spirit"

@@ -22,6 +22,8 @@ pkill -f "$run/VPW64Deluxe" 2>/dev/null || true; sleep 0.5
 # VPW_KEEP_SAVE=1 keeps the previous run's save (for testing that saves survive a relaunch).
 mkdir -p "$run"; [ -n "${VPW_KEEP_SAVE:-}" ] || rm -rf "$run/saves" "$run"/*.json "$run/mod_config" "$run/mods"
 touch "$run/portable.txt"
+# VPW_CHEATS='{"unlock_wrestlers": true}' starts the run with those Cheats switches (the Game tab file).
+[ -z "${VPW_CHEATS:-}" ] || printf '%s' "$VPW_CHEATS" > "$run/game.json"
 mkdir -p "$run" && rm -f "$run/VPW64Deluxe" && cp build/VPW64Deluxe "$run/" && rm -rf "$run/assets" && cp -R build/assets "$run/assets" && cp build/recompcontrollerdb.txt "$run/"
 exe=$run/VPW64Deluxe
 log=$(cd "$out" && pwd)/run.log; rm -f "$log"

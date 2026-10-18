@@ -50,3 +50,19 @@ for ROM, RAM, pat in BLOCKS:
             src = src[:j] + f'\n    func_{end:08X}(rdram, ctx);   /* falls through on hardware */\n    return;' + src[j:]
             open(fn, 'w', encoding='utf-8').write(src); chained += 1; break
 print(f'{chained} far-block pieces chained to their successor')
+
+# 3. Cheat hook: "Unlock all wrestlers". func_800F4668(n) is the game's own "is unlock n set in the
+#    save" check (bitfield at 0x800A440E); unlocks 0..0x14 are the 21 lockable wrestlers listed in the
+#    table at 0x8003FD44 (see notes/ram-map.md). With the cheat on, those answer "unlocked"; the save
+#    itself is never written, so switching the cheat off locks them again.
+hooked = 0
+for fn in glob.glob('RecompiledFuncs/*.c'):
+    s = open(fn, encoding='utf-8', errors='replace').read()
+    sig = 'RECOMP_FUNC void func_800F4668(uint8_t* rdram, recomp_context* ctx) {\n'
+    if sig not in s or 'vpw64dx_unlock_all_wrestlers' in s: continue
+    s, n = re.subn(re.escape(sig) + r'([^\n]*\n    int c1cs = 0;\n)',
+                   lambda m: sig + m.group(1) + '    { extern int vpw64dx_unlock_all_wrestlers(void);\n'
+                   '      if (vpw64dx_unlock_all_wrestlers() && (uint32_t)ctx->r4 <= 0x14u) { ctx->r2 = 1; return; } }\n', s)
+    assert n == 1, fn + ': func_800F4668 entry not found'
+    open(fn, 'w', encoding='utf-8').write(s); hooked += 1
+print(f'unlock-all hook in {hooked} file(s)' if hooked else 'unlock-all hook already present')

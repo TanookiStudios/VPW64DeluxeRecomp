@@ -47,3 +47,16 @@ match card, Start/B/A from 58 s; the bell rings about 91 s after launch).
 ## Match clock (NOT found)
 
 See above: nothing in memory holds the displayed seconds or a 60-per-second frame count.
+
+## Wrestler unlocks (PROVEN)
+
+- From the community VPW2 decomp (AKI-Club/vpw2): `tbl_WrestlerUnlockData` at 0x8003FD44 lists (wrestler index,
+  unlock number) pairs, 21 unlock numbers (0..0x14); `func_8000A3AC(wrestler)` returns unlock number + 1, or 0 for
+  "never locked". The Deluxe ROM keeps the table and both functions byte-for-byte.
+- The wrestler select (ovl_c, 14 call sites) then asks `func_800F4668(n)`: is bit n set in the save's unlock
+  bitfield at 0x800A440E (69 bits)?
+- Cheat: a hand edit (tools/hand_edits.py, item 3) makes `func_800F4668` answer 1 for n <= 0x14 while the Cheats
+  switch is on. The save is never written.
+- Proof (notes/unlock-proof.png, fresh save): with the switch off the groups go Legends 2 -> Legends 4; with it on,
+  Legends 3 (Great Muta, Rick Rude, Tiger Mask) appears between them. The other unlock numbers did not add visible
+  wrestlers in this test; the Deluxe edition may already open the rest.
