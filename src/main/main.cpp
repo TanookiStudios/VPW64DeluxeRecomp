@@ -45,7 +45,6 @@
 #include "librecomp/overlays.hpp"
 #include "ovl_patches.hpp"
 #include "icon_bytes.h"
-#include "logo_bytes.h"
 #include "../../vendor/RecompFrontend/recompui/src/elements/ui_image.h"
 #ifdef _WIN32
 #include "renderdoc_app.h" // [wcw] RenderDoc in-app capture API (diagnostic)
@@ -318,9 +317,93 @@ static void update_scripted_pad() {
     }
 }
 
+// ---------------- this port's own Game tab (cheats) and About text ----------------
+static const std::string vpw64dx_game_tab_id = "game";
+static const char* vpw64dx_about_text =
+    "Hi, I'm Maddie. I make apps and games on my own at Tanooki Studios.<br/><br/>"
+    "Virtual Pro Wrestling 2 is the wrestling game I kept hearing was the best one on the Nintendo 64, "
+    "and the Deluxe fan edition adds even more to it. I wanted it to run on a modern computer the way "
+    "it should: sharp, with controllers that just work, and a few cheats for when the ref is slow.<br/><br/>"
+    "It's free, and it'll stay free. You bring your own copy of the game; nothing from the original "
+    "cartridge ships with this. It isn't made by or affiliated with AKI, Asmik Ace, the Deluxe edition's "
+    "authors or Nintendo.<br/><br/>"
+    "Making apps (including some decomps) is how I pay my bills. If this game brought you some nostalgia "
+    "and you ever got pinned at 29:59 of a thirty-minute match, feel free to drop me a tiny tip. "
+    "It really helps!";
+
+namespace cheat {
+    inline const std::string infinite_spirit = "infinite_spirit";
+    inline const std::string stop_clock = "stop_clock";
+}
+static void vpw64dx_create_game_tab() {
+    recomp::config::Config& c = recompui::config::create_config_tab("Game", vpw64dx_game_tab_id, false);
+    c.add_bool_option(cheat::infinite_spirit, "Infinite spirit (player 1)", "Player 1's spirit bar never drops below full.", false);
+    c.add_bool_option(cheat::stop_clock, "Stop the match clock", "The match timer stays where it is, so a timed match never ends by time.", false);
+}
+static bool vpw64dx_cheat_on(const std::string& id) {
+    static bool have_tab = false;
+    if (!have_tab) { try { recompui::config::get_config(vpw64dx_game_tab_id); have_tab = true; } catch (...) { return false; } }
+    return std::get<bool>(recompui::config::get_config(vpw64dx_game_tab_id).get_option_value(id));
+}
+extern uint8_t* g_ww_rdram;
+// RAM addresses are filled in from notes/ram-map.md once proven (VPW_POKE changes the screen).
+static uint32_t vpw64dx_addr_spirit_p1 = 0;   // halfword
+static uint32_t vpw64dx_addr_clock = 0;       // word: frames
+static void vpw64dx_apply_cheats() {
+    if (g_ww_rdram == nullptr) return;
+    auto rd16 = [](uint32_t a) { uint32_t o = a & 0x7FFFFF; return (uint16_t)((g_ww_rdram[o ^ 2] << 8) | g_ww_rdram[(o + 1) ^ 2]); };
+    auto wr16 = [](uint32_t a, uint16_t v) { uint32_t o = a & 0x7FFFFF; g_ww_rdram[o ^ 2] = (uint8_t)(v >> 8); g_ww_rdram[(o + 1) ^ 2] = (uint8_t)v; };
+    auto rd32 = [](uint32_t a) { uint32_t o = a & 0x7FFFFF; return (uint32_t)((g_ww_rdram[o] << 24) | (g_ww_rdram[o + 1] << 16) | (g_ww_rdram[o + 2] << 8) | g_ww_rdram[o + 3]); };
+    auto wr32 = [](uint32_t a, uint32_t v) { uint32_t o = a & 0x7FFFFF; for (int i = 0; i < 4; i++) g_ww_rdram[o + i] = (uint8_t)(v >> (24 - 8 * i)); };
+    (void)rd16; (void)wr16; (void)rd32; (void)wr32;
+    if (vpw64dx_addr_spirit_p1 && vpw64dx_cheat_on(cheat::infinite_spirit)) { /* set once addresses are proven */ }
+    if (vpw64dx_addr_clock && vpw64dx_cheat_on(cheat::stop_clock)) { /* set once addresses are proven */ }
+}
+static void vpw64dx_vi_callback() {
+    recompinput::update_rumble();
+    vpw64dx_apply_cheats();
+}
+
+// Bring-up diagnostics for mapping RAM (cheats): VPW_RAM_SNAP="84000,92000" writes the whole
+// 8 MB of game memory to ram-<ms>.bin in the working directory when the clock passes each time;
+// VPW_POKE="80123456:h=99,80123460:b=1" writes a byte (b), halfword (h) or word (w) every frame.
+extern uint8_t* g_ww_rdram;
+static void ram_diagnostics() {
+    static const char* snap_env = getenv("VPW_RAM_SNAP");
+    static const char* poke_env = getenv("VPW_POKE");
+    if (g_ww_rdram == nullptr || (snap_env == nullptr && poke_env == nullptr)) return;
+    static const Uint32 t0 = SDL_GetTicks();
+    Uint32 now = SDL_GetTicks() - t0;
+    if (snap_env != nullptr) {
+        static std::vector<Uint32> times = [] {
+            std::vector<Uint32> v; for (const char* p = snap_env; *p; ) { v.push_back((Uint32)strtoul(p, (char**)&p, 10)); if (*p == ',') p++; else break; } return v;
+        }();
+        static size_t next = 0;
+        if (next < times.size() && now >= times[next]) {
+            char name[64]; snprintf(name, sizeof name, "ram-%u.bin", (unsigned)times[next]);
+            if (FILE* f = fopen(name, "wb")) { fwrite(g_ww_rdram, 1, 8 * 1024 * 1024, f); fclose(f); fprintf(stderr, "[vpw64dx] ram snapshot %s at %u ms\n", name, (unsigned)now); }
+            next++;
+        }
+    }
+    static const Uint32 poke_after = getenv("VPW_POKE_AFTER") ? (Uint32)strtoul(getenv("VPW_POKE_AFTER"), nullptr, 10) : 0;
+    if (poke_env != nullptr && now >= poke_after) {
+        for (const char* p = poke_env; *p; ) {
+            uint32_t addr = (uint32_t)strtoul(p, (char**)&p, 16); char width = 'w'; uint32_t val = 0;
+            if (*p == ':') { p++; width = *p++; }
+            if (*p == '=') { p++; val = (uint32_t)strtoul(p, (char**)&p, 0); }
+            uint32_t off = addr & 0x7FFFFF;   // N64 byte order: the runtime keeps memory as big-endian words
+            if (width == 'b') g_ww_rdram[off ^ 3] = (uint8_t)val;
+            else if (width == 'h') { g_ww_rdram[off ^ 2] = (uint8_t)(val >> 8); g_ww_rdram[(off + 1) ^ 2] = (uint8_t)val; }
+            else { for (int i = 0; i < 4; i++) g_ww_rdram[off + i] = (uint8_t)(val >> (24 - 8 * i)); }
+            if (*p == ',') p++; else break;
+        }
+    }
+}
+
 void update_gfx(void*) {
     update_virtual_pads();
     update_scripted_pad();
+    ram_diagnostics();
     recompinput::handle_events();
 }
 
@@ -1040,6 +1123,7 @@ int main(int argc, char** argv) {
     recompui::config::create_graphics_tab();
     recompui::config::create_controls_tab();
     recompui::config::create_sound_tab();
+    vpw64dx_create_game_tab();
     // The Mods tab must be created here, not just selected. The launcher's Mods entry
     // (add_mods_option) only calls config::set_tab(config::mods::id); without this the
     // tab doesn't exist, set_tab is a no-op and the config UI opens on General instead.
@@ -1069,21 +1153,19 @@ int main(int argc, char** argv) {
         // and .nrm scanning were all running before this option existed — only the UI
         // entry point was missing.
         recompui::register_launcher_init_callback([](recompui::LauncherMenu* menu) {
-            // Game logo in place of the default program-name text title (mirrors World
-            // Tour). The image must be queued before the Image element referencing its
-            // src is created.
+            // Header mark: the port's own icon (assets/icon, drawn by us) above the buttons.
+            // The image must be queued before the Image element referencing its src is created.
             menu->remove_default_title();
-            static const std::string logo_src = "?/game/vpw.vpw2.jp/logo";
-            recompui::queue_image_from_bytes_file(logo_src,
-                std::vector<char>(logo_bytes, logo_bytes + logo_bytes_size));
+            static const std::string mark_src = "?/game/tanooki.vpw64deluxe/mark";
+            recompui::queue_image_from_bytes_file(mark_src, std::vector<char>(icon_bytes, icon_bytes + icon_bytes_size));
             auto context = recompui::get_current_context();
-            recompui::Image* logo = context.create_element<recompui::Image>(menu, logo_src);
-            logo->set_position(recompui::Position::Absolute);
-            logo->set_top(25.0f, recompui::Unit::Percent);
-            logo->set_left(50.0f, recompui::Unit::Percent);
-            logo->set_translate_2D(-50.0f, -50.0f, recompui::Unit::Percent);
-            logo->set_width(520.0f);
-            logo->set_height(520.0f * 497.0f / 1200.0f);  // icons/logo.png aspect
+            recompui::Image* mark = context.create_element<recompui::Image>(menu, mark_src);
+            mark->set_position(recompui::Position::Absolute);
+            mark->set_top(22.0f, recompui::Unit::Percent);
+            mark->set_left(50.0f, recompui::Unit::Percent);
+            mark->set_translate_2D(-50.0f, -50.0f, recompui::Unit::Percent);
+            mark->set_width(180.0f);
+            mark->set_height(180.0f);
 
             auto* game_options_menu = menu->init_game_options_menu(
                 supported_games[0].game_id,
@@ -1092,9 +1174,19 @@ int main(int argc, char** argv) {
                 supported_games[0].thumbnail_bytes,
                 recompui::GameOptionsMenuLayout::Center);
             game_options_menu->add_start_game_or_load_rom_option();
-            game_options_menu->add_setup_controls_option();
+            // House style: Game (this port's own options), Settings, About.
+            game_options_menu->add_option("Game", []() {
+                recompui::update_game_mod_id(supported_games[0].mod_game_id);
+                recompui::config::set_tab(vpw64dx_game_tab_id);
+                recompui::hide_all_contexts();
+                recompui::config::open();
+            });
             game_options_menu->add_settings_option();
-            game_options_menu->add_mods_option();
+            game_options_menu->add_option("About", []() {
+                recompui::open_choice_prompt("About", vpw64dx_about_text, "Leave a Tip", "Close",
+                    []() { SDL_OpenURL("https://tanookistudios.com/SupportMe"); }, []() {},
+                    recompui::ButtonStyle::Success, recompui::ButtonStyle::Secondary, false);
+            });
             game_options_menu->add_exit_option();
         });
     }
@@ -1138,7 +1230,7 @@ int main(int argc, char** argv) {
     };
     // update_rumble runs every VI to ramp/decay the host controller's rumble motor toward the
     // state last set via set_rumble (BMHero registers it the same way).
-    ultramodern::events::callbacks_t events_callbacks{ .vi_callback = recompinput::update_rumble, .gfx_init_callback = nullptr };
+    ultramodern::events::callbacks_t events_callbacks{ .vi_callback = vpw64dx_vi_callback, .gfx_init_callback = nullptr };
     ultramodern::error_handling::callbacks_t error_callbacks{ .message_box = recompui::message_box };
     ultramodern::threads::callbacks_t threads_callbacks{ .get_game_thread_name = [](const OSThread*) -> std::string { return "game"; } };
 

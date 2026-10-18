@@ -108,14 +108,10 @@ add_subdirectory(${FRONTEND} ${CMAKE_BINARY_DIR}/RecompFrontend)
 add_executable(VPW64Deluxe)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
-    COMMAND file_to_c ${CMAKE_SOURCE_DIR}/icons/app.png icon_bytes ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
-    DEPENDS ${CMAKE_SOURCE_DIR}/icons/app.png file_to_c
+    COMMAND file_to_c ${CMAKE_SOURCE_DIR}/assets/icon/vpw64dx-256.png icon_bytes ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.h
+    DEPENDS ${CMAKE_SOURCE_DIR}/assets/icon/vpw64dx-256.png file_to_c
 )
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/logo_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/logo_bytes.h
-    COMMAND file_to_c ${CMAKE_SOURCE_DIR}/icons/logo.png logo_bytes ${CMAKE_CURRENT_BINARY_DIR}/logo_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/logo_bytes.h
-    DEPENDS ${CMAKE_SOURCE_DIR}/icons/logo.png file_to_c
-)
-target_sources(VPW64Deluxe PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c ${CMAKE_CURRENT_BINARY_DIR}/logo_bytes.c)
+target_sources(VPW64Deluxe PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/icon_bytes.c)
 
 set(SOURCES
     ${CMAKE_SOURCE_DIR}/src/main/main.cpp
@@ -185,7 +181,10 @@ target_sources(VPW64Deluxe PRIVATE ${SOURCES})
 
 # librecomp's RSP vector-unit header (used by rsp/vpw2_audio.cpp) needs SSE4.1 on x86-64
 # (sse2neon covers arm64).
-if(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
+if (APPLE AND "x86_64" IN_LIST CMAKE_OSX_ARCHITECTURES)
+    # Universal build: the Intel slice needs SSE4.1 for the RSP vector code; -Xarch_ limits the flag to that slice.
+    target_compile_options(VPW64Deluxe PRIVATE -Xarch_x86_64 -msse4.1 -fno-strict-aliasing -fms-extensions)
+elseif(CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
     target_compile_options(VPW64Deluxe PRIVATE -march=nehalem -fno-strict-aliasing -fms-extensions)
 else()
     target_compile_options(VPW64Deluxe PRIVATE -fno-strict-aliasing -fms-extensions)

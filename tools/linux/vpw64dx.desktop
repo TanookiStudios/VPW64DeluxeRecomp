@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=VPW64 Deluxe
+Comment=Virtual Pro Wrestling 64 Deluxe rebuilt as a native program (bring your own ROM)
+Exec=VPW64Deluxe
+Icon=vpw64dx
+Categories=Game;Sports;
+Terminal=false

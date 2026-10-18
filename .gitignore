@@ -14,3 +14,9 @@ dist/
 N64Recomp
 RSPRecomp
 icons/
+
+# Pictures: only our own art, the bring-up proof shots and the release screenshots
+*.png
+!assets/icon/*.png
+!notes/*.png
+!docs/screenshots/*.png
