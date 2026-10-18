@@ -70,7 +70,6 @@ Settings and saves live in `~/Library/Application Support/VPW64Deluxe` on a Mac 
 |---|---|
 | Mod | **Virtual Pro Wrestling 64 Deluxe** (the title screen says "Virtual 64 Pro Wrestling Deluxe") |
 | Mod author | Lowwater, 2026 |
-| Mod website | (link to come) |
 | Based on | **Virtual Pro Wrestling 2: Ōdō Keishō** (AKI Corporation / Asmik Ace Entertainment, Nintendo 64, Japan, 2000) |
 | What the mod changes | a bigger roster across several promotions, new arenas, English menus, and many engine tweaks; the original game's code is kept and extended |
 
