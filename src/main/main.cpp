@@ -28,6 +28,9 @@
 #include "nfd.h"
 
 #include "ultramodern/ultra64.h"
+#ifdef None
+#undef None   // X11 (pulled in by SDL on Linux) defines None; ultramodern uses it as an enumerator
+#endif
 #include "ultramodern/ultramodern.hpp"
 #include "recompui/recompui.h"
 #include "recompui/renderer.h"
@@ -268,27 +271,25 @@ static void update_virtual_pads() {
 // button list releases everything). Buttons: a b x y start back l r up down left right, and
 // lx-/lx+/ly-/ly+ for the left stick. Time counts from the first frame. Lets the capture
 // harness play the game without anyone touching the window.
-static void update_scripted_pad() {
-    static const char* script = getenv("VPW_INPUT_SCRIPT");
-    static SDL_Joystick* pad = nullptr;
-    static uint32_t t0 = 0;
-    static size_t pos = 0;
-    static bool done = false;
-    if (script == nullptr || script[0] == '\0' || done) return;
-    if (pad == nullptr) {
+struct ScriptedPad { const char* script = nullptr; SDL_Joystick* pad = nullptr; uint32_t t0 = 0; size_t pos = 0; bool done = false; };
+static void run_scripted_pad(ScriptedPad& sp, int index) {
+    const char* script = sp.script;
+    if (script == nullptr || script[0] == '\0' || sp.done) return;
+    if (sp.pad == nullptr) {
         int dev = SDL_JoystickAttachVirtual(SDL_JOYSTICK_TYPE_GAMECONTROLLER,
                                             SDL_CONTROLLER_AXIS_MAX, SDL_CONTROLLER_BUTTON_MAX, 0);
-        if (dev < 0) { fprintf(stderr, "[vpw64dx] scripted pad failed: %s\n", SDL_GetError()); done = true; return; }
-        pad = SDL_JoystickOpen(dev);
-        t0 = SDL_GetTicks();
-        fprintf(stderr, "[vpw64dx] scripted pad attached (dev=%d) script=\"%s\"\n", dev, script);
+        if (dev < 0) { fprintf(stderr, "[vpw64dx] scripted pad %d failed: %s\n", index, SDL_GetError()); sp.done = true; return; }
+        sp.pad = SDL_JoystickOpen(dev);
+        sp.t0 = SDL_GetTicks();
+        fprintf(stderr, "[vpw64dx] scripted pad %d attached (dev=%d) script=\"%s\"\n", index, dev, script);
     }
-    uint32_t now = SDL_GetTicks() - t0;
+    SDL_Joystick* pad = sp.pad;
+    uint32_t now = SDL_GetTicks() - sp.t0;
     // Apply every entry whose time stamp has passed (the last one wins).
-    while (script[pos] != '\0') {
+    while (script[sp.pos] != '\0') {
         char* end = nullptr;
-        unsigned long at = strtoul(script + pos, &end, 10);
-        if (end == script + pos || *end != ':') { fprintf(stderr, "[vpw64dx] bad input script at %zu\n", pos); done = true; return; }
+        unsigned long at = strtoul(script + sp.pos, &end, 10);
+        if (end == script + sp.pos || *end != ':') { fprintf(stderr, "[vpw64dx] bad input script at %zu\n", sp.pos); sp.done = true; return; }
         if (now < at) break;
         const char* names = end + 1;
         const char* stop = strchr(names, ';');
@@ -299,6 +300,7 @@ static void update_scripted_pad() {
             {"l", SDL_CONTROLLER_BUTTON_LEFTSHOULDER}, {"r", SDL_CONTROLLER_BUTTON_RIGHTSHOULDER},
             {"up", SDL_CONTROLLER_BUTTON_DPAD_UP}, {"down", SDL_CONTROLLER_BUTTON_DPAD_DOWN},
             {"left", SDL_CONTROLLER_BUTTON_DPAD_LEFT}, {"right", SDL_CONTROLLER_BUTTON_DPAD_RIGHT},
+            {"z", SDL_CONTROLLER_BUTTON_LEFTSTICK}, {"rs", SDL_CONTROLLER_BUTTON_RIGHTSTICK},
         };
         for (const auto& b : buttons) {
             bool on = (" " + list + " ").find(" " + std::string(b.name) + " ") != std::string::npos
@@ -312,9 +314,22 @@ static void update_scripted_pad() {
         SDL_JoystickSetVirtualAxis(pad, SDL_CONTROLLER_AXIS_LEFTY, 0);
         axis("lx-", SDL_CONTROLLER_AXIS_LEFTX, -32000); axis("lx+", SDL_CONTROLLER_AXIS_LEFTX, 32000);
         axis("ly-", SDL_CONTROLLER_AXIS_LEFTY, -32000); axis("ly+", SDL_CONTROLLER_AXIS_LEFTY, 32000);
-        fprintf(stderr, "[vpw64dx] input @%lu ms: %s\n", at, list.c_str());
-        pos = stop ? (size_t)(stop + 1 - script) : strlen(script);
+        SDL_JoystickSetVirtualAxis(pad, SDL_CONTROLLER_AXIS_RIGHTX, 0);
+        SDL_JoystickSetVirtualAxis(pad, SDL_CONTROLLER_AXIS_RIGHTY, 0);
+        SDL_JoystickSetVirtualAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERLEFT, 0);
+        SDL_JoystickSetVirtualAxis(pad, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 0);
+        axis("rx-", SDL_CONTROLLER_AXIS_RIGHTX, -32000); axis("rx+", SDL_CONTROLLER_AXIS_RIGHTX, 32000);   // C-left / C-right
+        axis("ry-", SDL_CONTROLLER_AXIS_RIGHTY, -32000); axis("ry+", SDL_CONTROLLER_AXIS_RIGHTY, 32000);   // C-up / C-down
+        axis("lt", SDL_CONTROLLER_AXIS_TRIGGERLEFT, 32000); axis("rt", SDL_CONTROLLER_AXIS_TRIGGERRIGHT, 32000);   // N64 L / R
+        fprintf(stderr, "[vpw64dx] input%d @%lu ms: %s\n", index, at, list.c_str());
+        sp.pos = stop ? (size_t)(stop + 1 - script) : strlen(script);
     }
+}
+// VPW_INPUT_SCRIPT drives pad 1 (player 1); VPW_INPUT_SCRIPT2 drives a second pad (player 2).
+static void update_scripted_pad() {
+    static ScriptedPad pads[2] = { { getenv("VPW_INPUT_SCRIPT") }, { getenv("VPW_INPUT_SCRIPT2") } };
+    run_scripted_pad(pads[0], 1);
+    run_scripted_pad(pads[1], 2);
 }
 
 // ---------------- this port's own Game tab (cheats) and About text ----------------
@@ -332,13 +347,15 @@ static const char* vpw64dx_about_text =
     "It really helps!";
 
 namespace cheat {
-    inline const std::string infinite_spirit = "infinite_spirit";
-    inline const std::string stop_clock = "stop_clock";
+    inline const std::string special_ready = "special_ready";
+    inline const std::string weak_opponents = "weak_opponents";
 }
 static void vpw64dx_create_game_tab() {
     recomp::config::Config& c = recompui::config::create_config_tab("Game", vpw64dx_game_tab_id, false);
-    c.add_bool_option(cheat::infinite_spirit, "Infinite spirit (player 1)", "Player 1's spirit bar never drops below full.", false);
-    c.add_bool_option(cheat::stop_clock, "Stop the match clock", "The match timer stays where it is, so a timed match never ends by time.", false);
+    c.add_bool_option(cheat::special_ready, "Special always ready (player 1)",
+        "Player 1's SPIRIT bar stays maxed out and lit, so the special is always there.", false);
+    c.add_bool_option(cheat::weak_opponents, "Weak opponents",
+        "Everyone but player 1 has no spirit at all: they hit soft, can't do specials and get pinned easily.", false);
 }
 static bool vpw64dx_cheat_on(const std::string& id) {
     static bool have_tab = false;
@@ -346,18 +363,19 @@ static bool vpw64dx_cheat_on(const std::string& id) {
     return std::get<bool>(recompui::config::get_config(vpw64dx_game_tab_id).get_option_value(id));
 }
 extern uint8_t* g_ww_rdram;
-// RAM addresses are filled in from notes/ram-map.md once proven (VPW_POKE changes the screen).
-static uint32_t vpw64dx_addr_spirit_p1 = 0;   // halfword
-static uint32_t vpw64dx_addr_clock = 0;       // word: frames
+// Proof in notes/ram-map.md. Player slots: 4 blocks of 0x314 bytes from 0x8016C440 (the game's own
+// per-slot loop steps by 0x314); the SPIRIT byte is at +0x3B (0x8016C47B = the GameShark "P1 spirit"
+// address; 0xFF lights the bar red). The blocks only hold match data while a match is on, so the
+// writes are gated on three words that are constant throughout a match and different elsewhere.
 static void vpw64dx_apply_cheats() {
     if (g_ww_rdram == nullptr) return;
-    auto rd16 = [](uint32_t a) { uint32_t o = a & 0x7FFFFF; return (uint16_t)((g_ww_rdram[o ^ 2] << 8) | g_ww_rdram[(o + 1) ^ 2]); };
-    auto wr16 = [](uint32_t a, uint16_t v) { uint32_t o = a & 0x7FFFFF; g_ww_rdram[o ^ 2] = (uint8_t)(v >> 8); g_ww_rdram[(o + 1) ^ 2] = (uint8_t)v; };
-    auto rd32 = [](uint32_t a) { uint32_t o = a & 0x7FFFFF; return (uint32_t)((g_ww_rdram[o] << 24) | (g_ww_rdram[o + 1] << 16) | (g_ww_rdram[o + 2] << 8) | g_ww_rdram[o + 3]); };
-    auto wr32 = [](uint32_t a, uint32_t v) { uint32_t o = a & 0x7FFFFF; for (int i = 0; i < 4; i++) g_ww_rdram[o + i] = (uint8_t)(v >> (24 - 8 * i)); };
-    (void)rd16; (void)wr16; (void)rd32; (void)wr32;
-    if (vpw64dx_addr_spirit_p1 && vpw64dx_cheat_on(cheat::infinite_spirit)) { /* set once addresses are proven */ }
-    if (vpw64dx_addr_clock && vpw64dx_cheat_on(cheat::stop_clock)) { /* set once addresses are proven */ }
+    auto rd16 = [](uint32_t a) { return *(uint16_t*)(g_ww_rdram + ((a & 0x7FFFFF) ^ 2)); };
+    auto wr8 = [](uint32_t a, uint8_t v) { g_ww_rdram[(a & 0x7FFFFF) ^ 3] = v; };
+    const uint32_t slot0 = 0x8016C440, stride = 0x314, spirit = 0x3B;
+    bool in_match = rd16(slot0 + 0x24) == 0xFFFF && rd16(slot0 + 0x62) == 0x0800 && rd16(slot0 + 0x7E) == 0x0600;
+    if (!in_match) return;
+    if (vpw64dx_cheat_on(cheat::special_ready)) wr8(slot0 + spirit, 0xFF);
+    if (vpw64dx_cheat_on(cheat::weak_opponents)) for (int k = 1; k < 4; k++) wr8(slot0 + k * stride + spirit, 0);
 }
 static void vpw64dx_vi_callback() {
     recompinput::update_rumble();
@@ -391,10 +409,10 @@ static void ram_diagnostics() {
             uint32_t addr = (uint32_t)strtoul(p, (char**)&p, 16); char width = 'w'; uint32_t val = 0;
             if (*p == ':') { p++; width = *p++; }
             if (*p == '=') { p++; val = (uint32_t)strtoul(p, (char**)&p, 0); }
-            uint32_t off = addr & 0x7FFFFF;   // N64 byte order: the runtime keeps memory as big-endian words
+            uint32_t off = addr & 0x7FFFFF;   // the runtime keeps each 32-bit word as a host (little-endian) word
             if (width == 'b') g_ww_rdram[off ^ 3] = (uint8_t)val;
-            else if (width == 'h') { g_ww_rdram[off ^ 2] = (uint8_t)(val >> 8); g_ww_rdram[(off + 1) ^ 2] = (uint8_t)val; }
-            else { for (int i = 0; i < 4; i++) g_ww_rdram[off + i] = (uint8_t)(val >> (24 - 8 * i)); }
+            else if (width == 'h') *(uint16_t*)(g_ww_rdram + (off ^ 2)) = (uint16_t)val;
+            else *(uint32_t*)(g_ww_rdram + off) = val;
             if (*p == ',') p++; else break;
         }
     }
@@ -407,11 +425,13 @@ void update_gfx(void*) {
     recompinput::handle_events();
 }
 
+// Which ports hold a controller: port 1 always (the keyboard or the first pad), the others
+// only once the launcher assigned a player to them.
 ultramodern::input::connected_device_info_t get_connected_device_info(int controller_num) {
-    // All four ports report a controller so the game considers every player slot joinable
-    // (unassigned players read as neutral input, like an idle plugged-in pad). Only port 1
-    // has a pak: the emulated hybrid Controller/Rumble Pak in librecomp si.cpp.
-    return { .connected_device = ultramodern::input::Device::Controller,
+    bool plugged = controller_num == 0 || recompinput::players::get_player_is_assigned(controller_num);
+    static bool last[4] = { true, true, true, true };
+    if (controller_num < 4 && last[controller_num] != plugged) { last[controller_num] = plugged; fprintf(stderr, "[vpw64dx] port %d plugged=%d\n", controller_num + 1, (int)plugged); }
+    return { .connected_device = plugged ? ultramodern::input::Device::Controller : ultramodern::input::Device::None,
              .connected_pak = (controller_num == 0) ? ultramodern::input::Pak::RumblePak
                                                     : ultramodern::input::Pak::None };
 }
@@ -869,7 +889,11 @@ static void register_texture_packs(const std::filesystem::path& app_folder, bool
 // [vpw64dx] Print a native backtrace on a crash (translated functions carry their N64 names),
 // then let the default action run. Bring-up diagnostics; harmless to keep.
 extern "C" void vpw_print_last_pieces();
+extern bool vpw64dx_quitting;   // set by ultramodern::quit() (patches/runtime-0001)
 static void vpw64dx_crash_handler(int sig, siginfo_t* info, void* uctx) {
+    // The UI toolkit faults while its threads wind down after a quit (RmlUi/Cocoa autorelease);
+    // saves were flushed before that point, so a fault during shutdown just ends the process.
+    if (vpw64dx_quitting) { fflush(stderr); _exit(0); }
     void* frames[48];
     int n = backtrace(frames, 48);
     const char* name = sig == SIGSEGV ? "SIGSEGV" : sig == SIGBUS ? "SIGBUS" : "signal";
@@ -1371,5 +1395,9 @@ int main(int argc, char** argv) {
     fprintf(stderr, "[wcw] recomp::start returned\n");
 
     NFD_Quit();
-    return 0;
+    // Saves are flushed before recomp::start returns (join_saving_thread). The UI toolkit's static
+    // destructors then crash on the way out (RmlUi context table), which turned every quit into a
+    // crash report; leave the rest to the operating system.
+    fflush(stdout); fflush(stderr);
+    _exit(0);
 }

@@ -23,9 +23,11 @@ cp tools/linux/vpw64dx.desktop tools/linux/README-Linux.txt tools/linux/install-
 rm -rf "$OUT/assets/icon"   # the icon files are for building, not the program
 
 file "$OUT/VPW64Deluxe" | grep -q "ELF 64-bit.*x86-64" || { echo "FAIL: not a 64-bit Intel/AMD program" >&2; exit 1; }
-NEEDED=$(docker run --rm --platform linux/amd64 -v "$PWD/$OUT":/pkg vpw64dx-linux-build sh -c 'ldd /pkg/VPW64Deluxe' | awk '{print $1}')
+# Only the program's own direct dependencies matter (what it was linked against); the libraries
+# those pull in belong to the player's system.
+NEEDED=$(docker run --rm --platform linux/amd64 -v "$PWD/$OUT":/pkg vpw64dx-linux-build sh -c 'objdump -p /pkg/VPW64Deluxe | awk "/NEEDED/ {print \$2}"')
 echo "Libraries the program needs:"; echo "$NEEDED" | sed 's/^/  /'
-BAD=$(echo "$NEEDED" | grep -v -E '^(linux-vdso\.so\.1|/lib64/ld-linux-x86-64\.so\.2|libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libstdc\+\+\.so\.6|libgcc_s\.so\.1|libz\.so\.1|libgtk-3\.so\.0|libgdk-3\.so\.0|libglib-2\.0\.so\.0|libgobject-2\.0\.so\.0|libgio-2\.0\.so\.0)$' || true)
+BAD=$(echo "$NEEDED" | grep -v -E '^(libc\.so\.6|libm\.so\.6|libdl\.so\.2|libpthread\.so\.0|librt\.so\.1|libstdc\+\+\.so\.6|libgcc_s\.so\.1|libz\.so\.1|libdbus-1\.so\.3)$' || true)
 [ -z "$BAD" ] || { echo "FAIL: unusual libraries needed:" >&2; echo "$BAD" >&2; exit 1; }
 python3 -I tools/release_scan.py "$OUT"
 

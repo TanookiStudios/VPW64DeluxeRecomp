@@ -5,16 +5,17 @@
   tools/ram_find.py same  <a.bin> <b.bin> <value> [width]        values equal to <value> in both
   tools/ram_find.py read  <a.bin> <addr> [count]                 dump words at an address
 
-Snapshots are the N64's 8 MB of memory in the runtime's layout (big-endian words), so a
-16-bit value at address A lives at bytes (A^2, A^2+1) and a byte at A^3. width: 1, 2 or 4.
+Snapshots are the N64's 8 MB of memory in the runtime's layout: every 32-bit word is stored
+as a little-endian host word, so a 16-bit value at address A is a little-endian halfword at
+A^2 and a byte at A^3. width: 1, 2 or 4.
 Prints N64 addresses (0x80xxxxxx). A candidate only counts as found once VPW_POKE at that
 address visibly changes the screen (notes/ram-map.md keeps the proof)."""
 import struct, sys
 
 def load(p): return open(p, 'rb').read()
 def val(d, off, w):
-    if w == 4: return struct.unpack_from('>I', d, off)[0]
-    if w == 2: return struct.unpack_from('>H', d, off ^ 2)[0]
+    if w == 4: return struct.unpack_from('<I', d, off)[0]
+    if w == 2: return struct.unpack_from('<H', d, off ^ 2)[0]
     return d[off ^ 3]
 def main():
     cmd = sys.argv[1]

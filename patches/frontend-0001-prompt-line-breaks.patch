@@ -1,3 +1,28 @@
+diff --git a/recompinput/include/recompinput/recompinput.h b/recompinput/include/recompinput/recompinput.h
+index 855ec2e..2f91d7b 100644
+--- a/recompinput/include/recompinput/recompinput.h
++++ b/recompinput/include/recompinput/recompinput.h
+@@ -2,6 +2,7 @@
+ 
+ #include "SDL.h"
+ #include "chrono"
++#include <string>   // [vpw64dx] Linux clang: std::string is not pulled in by SDL.h
+ 
+ namespace recompinput {
+     constexpr size_t max_num_players_supported = 128;
+diff --git a/recompinput/src/input_types.cpp b/recompinput/src/input_types.cpp
+index c6786e6..7952f91 100644
+--- a/recompinput/src/input_types.cpp
++++ b/recompinput/src/input_types.cpp
+@@ -12,7 +12,7 @@ static std::array<std::string, num_game_inputs> game_input_names = {
+ };
+ #undef DEFINE_INPUT
+ 
+-constexpr std::array<std::string, num_game_inputs> get_default_game_input_descriptions() {
++static std::array<std::string, num_game_inputs> get_default_game_input_descriptions() {   // [vpw64dx] not constexpr: std::string is not a literal type on Linux libstdc++
+ #define DEFINE_INPUT(name, value, readable) "",
+     std::array<std::string, num_game_inputs> descriptions = {
+         DEFINE_ALL_INPUTS()
 diff --git a/recompui/src/composites/ui_prompt.cpp b/recompui/src/composites/ui_prompt.cpp
 index 56a0b70..2c343f0 100644
 --- a/recompui/src/composites/ui_prompt.cpp

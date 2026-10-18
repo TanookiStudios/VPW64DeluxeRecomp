@@ -34,6 +34,10 @@ set(FRONTEND ${CMAKE_SOURCE_DIR}/vendor/RecompFrontend)
 set(RT64_STATIC TRUE)
 set(RT64_SDL_WINDOW_VULKAN TRUE)
 add_compile_definitions(HLSL_CPU)
+if (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    # rt64 sets this in its own directory; the frontend (a sibling) must see the same window type.
+    add_compile_definitions(PLUME_SDL_VULKAN_ENABLED)
+endif()
 add_subdirectory(${RT64DIR} ${CMAKE_BINARY_DIR}/rt64)
 target_include_directories(rt64 PRIVATE ${CMAKE_BINARY_DIR}/rt64/src)
 

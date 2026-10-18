@@ -34,5 +34,5 @@ extern "C" void recomp_load_extra_boot_overlays() {
     // ovl_b (0x8011E424) when a match starts. shortcut: assumes the allocator always hands out
     // 0x801BB3A0 for it; if a match type ever logs "Failed to find function at 0x801Bxxxx", map it
     // from the DMA hook instead.
-    load_section_by_rom(0x2F1A9D4, 0x801BB3A0);   // hack_match
+    load_section_by_rom(0x2F1A9D4, 0x801BB3A0);   // hack_match (the DMA hook in pi.cpp moves it if a match loads it elsewhere)
 }
