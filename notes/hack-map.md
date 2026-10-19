@@ -44,6 +44,16 @@ sized 0x4AC8 (running into data) and stubbed, which made the costume screen divi
 call site's own return point; `0x8003C500` → `0x8003C588` → `j 0x80009F4C` jumps into a
 *different* function's body and must stay a call, or the hook's stack frame is never popped.
 
+## Mixed-exit hooks (the match-end crash)
+
+`func_8003AFA0` (hack code) is called with `jal` from ovl_d's `func_8014261C` and has two exits: `jr $ra`
+(a normal return) or `j 0x80142684`, a point further down inside the caller. The translated jump runs the
+caller's remainder, epilogue included, inside the helper's C call; the caller then ran it again after the call
+returned, popping its 0x80-byte frame twice. Every match crashed at the three-count. tools/hand_edits.py item 4
+makes the helper raise a flag on the jump path and the caller return at once when it is set. Found by
+injecting call-site stack checks into every translated call and replaying a pinfall: the first callee that came
+back with a moved stack pointer was func_8003AFA0. A scan of every jal into hack code found no other such site.
+
 ## Saved-return-address idiom
 
 Two hack routines keep the return address in a scratch register and jump back through it

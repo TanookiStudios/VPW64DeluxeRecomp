@@ -84,6 +84,8 @@ extern "C" double wcw_widescreen_cull_scale() {
 
 // Non-local exit for the hack's text codec (see tools/hand_edits.py).
 extern "C" jmp_buf vpw64dx_t9_exit;
+// Set by a mixed-exit hack helper when it jumps back into its caller (tools/hand_edits.py item 4).
+extern "C" { int vpw64dx_took_jump = 0; }
 jmp_buf vpw64dx_t9_exit;
 
 // [vpw64dx] VPW_TRACE_LOOKUP=1: print every computed jump and the translated function it came from.
@@ -107,10 +109,22 @@ extern "C" void vpw_print_last_pieces() {
 }
 
 // [vpw64dx] Bring-up: report the first time a known invariant breaks, with the recent piece history.
+// [vpw64dx] Bring-up: callees that return with a moved $sp (call-site checks injected into RecompiledFuncs).
+static const char* vpw_cc_caller[64]; static const char* vpw_cc_callee[64]; static uint32_t vpw_cc_a[64], vpw_cc_b[64], vpw_cc_s3[64]; static unsigned vpw_cc_i = 0;
+extern "C" void vpw_call_check(const char* caller, const char* callee, uint32_t a, uint32_t b, uint32_t s3) {
+    if (a == b || a < 0x8008C000u || a > 0x8008E000u) return;
+    unsigned k = vpw_cc_i++ & 63; vpw_cc_caller[k] = caller; vpw_cc_callee[k] = callee; vpw_cc_a[k] = a; vpw_cc_b[k] = b; vpw_cc_s3[k] = s3;
+}
+extern "C" void vpw_print_ret_ring() {
+    fprintf(stderr, "[vpw64dx] calls that came back with a moved $sp (oldest first):");
+    for (unsigned k = 0; k < 64; k++) { unsigned j = (vpw_cc_i + k) & 63; if (vpw_cc_caller[j]) fprintf(stderr, " %s->%s(%08X->%08X s3=%08X)", vpw_cc_caller[j], vpw_cc_callee[j], vpw_cc_a[j], vpw_cc_b[j], vpw_cc_s3[j]); }
+    fprintf(stderr, "\n");
+}
 extern "C" void vpw_tripwire(const char* what, uint32_t a, uint32_t sp, uint32_t ra, uint32_t s0) {
     static bool once = false; if (once) return; once = true;
     fprintf(stderr, "\n[vpw64dx] TRIPWIRE: %s: value=%08X sp=%08X ra=%08X s0=%08X\n", what, a, sp, ra, s0);
     vpw_print_last_pieces();
+    vpw_print_ret_ring();
 }
 
 // [vpw64dx] Bring-up (VPW_DAMAGE_WATCH=1): every translated function calls this on entry (injected by a
@@ -134,3 +148,4 @@ extern "C" void vpw_damage_watch(const char* name, uint8_t* rdram) {
     }
     last = name;
 }
+

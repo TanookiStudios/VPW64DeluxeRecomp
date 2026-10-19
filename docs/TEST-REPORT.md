@@ -47,6 +47,13 @@ running to the end of the run (a frozen game stops producing sound).
   graphics (`tools/linux_smoke.sh`). Found a real bug: the window was not created for Vulkan graphics, so the
   Linux build crashed about a second after starting. Fixed; it now reaches the title screen and quits cleanly.
 
+## Third round
+
+- **A match ending by pinfall crashed the game** on the three-count (the longer runs had never finished a
+  match). Fixed (a mod hook unwound the stack twice; notes/hack-map.md). Verified: the match ends and the game
+  plays its post-match replay (notes/match-end-replay.png).
+- **Unlock all wrestlers** cheat proven: the hidden Legends 3 group appears only with the switch on.
+
 ## Not tested yet
 
 - Playing a Royal Road, League or Tournament through to the very end. The Tournament bracket advanced through

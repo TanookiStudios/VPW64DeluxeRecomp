@@ -66,3 +66,41 @@ for fn in glob.glob('RecompiledFuncs/*.c'):
     assert n == 1, fn + ': func_800F4668 entry not found'
     open(fn, 'w', encoding='utf-8').write(s); hooked += 1
 print(f'unlock-all hook in {hooked} file(s)' if hooked else 'unlock-all hook already present')
+
+# 4. Mixed-exit hook: the hack's func_8003AFA0 (called with jal from ovl_d's func_8014261C at 0x80142654)
+#    either returns normally (jr $ra) or jumps to 0x80142684, further down inside the CALLER. On hardware
+#    that jump simply continues the caller from 0x80142684. Translated, the jump runs the caller's remainder
+#    (including its epilogue) inside the helper's C call, and then the caller runs its remainder AGAIN after
+#    the call returns: the stack is popped twice (0x80 bytes) and the main loop restarts with garbage, which
+#    crashed the game at the end of every match (the three-count). Fix: the helper raises a flag on the jump
+#    path; the caller returns straight after the call when the flag is set. Found with call-site stack checks
+#    (see notes/hack-map.md, "Hook chains").
+HAZARDS = [  # (caller, call vram, helper, jump target inside the caller)
+    ('func_8014261C', 0x80142654, 'func_8003AFA0', 0x80142684),
+]
+fixed = 0
+for caller, call_pc, helper, target in HAZARDS:
+    for fn in glob.glob('RecompiledFuncs/*.c'):
+        s = open(fn, encoding='utf-8', errors='replace').read()
+        changed = False
+        hsig = f'RECOMP_FUNC void {helper}(uint8_t* rdram, recomp_context* ctx) {{\n'
+        if hsig in s and 'vpw64dx_took_jump = 1' not in s:
+            i = s.index(hsig); j = s.index('\n;}', i)
+            body = s[i:j]
+            jump = re.compile(r'(\n(\s*))((?:LOOKUP_FUNC\(0x%X\)|func_%X)\(rdram, ctx\);)' % (target, target))
+            body2, k = jump.subn(r'\1vpw64dx_took_jump = 1;   /* jump back into the caller, see tools/hand_edits.py item 4 */\2\3', body, count=1)
+            assert k == 1, f'{fn}: {helper} jump to {target:X} not found'
+            s = s[:i] + body2 + s[j:]; changed = True
+        csig = f'RECOMP_FUNC void {caller}(uint8_t* rdram, recomp_context* ctx) {{\n'
+        if csig in s and 'if (vpw64dx_took_jump)' not in s[s.index(csig):s.index('\n;}', s.index(csig))]:
+            i = s.index(csig); j = s.index('\n;}', i)
+            body = s[i:j]
+            call = re.compile(r'(\n\s*)(%s\(rdram, ctx\);)' % helper)
+            body2, k = call.subn(r'\1vpw64dx_took_jump = 0; \2 if (vpw64dx_took_jump) { vpw64dx_took_jump = 0; return; }', body, count=1)
+            assert k == 1, f'{fn}: call to {helper} in {caller} not found'
+            s = s[:i] + body2 + s[j:]; changed = True
+        if changed:
+            if 'extern int vpw64dx_took_jump;' not in s:
+                s = s.replace('#include "funcs.h"\n', '#include "funcs.h"\nextern int vpw64dx_took_jump;\n', 1)
+            open(fn, 'w', encoding='utf-8').write(s); fixed += 1
+print(f'mixed-exit hook fix applied in {fixed} file(s)' if fixed else 'mixed-exit hook fix already present')
