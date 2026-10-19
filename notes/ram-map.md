@@ -60,3 +60,14 @@ See above: nothing in memory holds the displayed seconds or a 60-per-second fram
 - Proof (notes/unlock-proof.png, fresh save): with the switch off the groups go Legends 2 -> Legends 4; with it on,
   Legends 3 (Great Muta, Rick Rude, Tiger Mask) appears between them. The other unlock numbers did not add visible
   wrestlers in this test; the Deluxe edition may already open the rest.
+
+## Damage cheats: leads (not proven yet)
+
+- The player-slot fields at +0x2A..+0x34 are move/animation state, not damage: a function-entry watcher showed
+  them changed by func_80140BC0 ("set broad action") and func_8001178C every move. Dead end.
+- Live per-wrestler data (AKI-Club/emuscripts moveparam_vpw2.html): blocks 0x131 bytes apart from 0x800980D4;
+  each wrestler's 30-byte ratings ("params") at 0x8009819C (P1), 0x800982CD, 0x800983FE, 0x8009852F. Verified
+  in this ROM: two copies of the same wrestler carry identical blocks. Values are packed two per byte.
+- AKI family layout (VPW Studio, VPW64 and Revenge): attack ratings at +0x05..+0x09, defense at +0x0A..+0x0E.
+  Candidate cheats: P1 attack max (damage boost), opponents' defense min (one-hit KO), P1 defense max /
+  opponents' attack min (can't be hurt). Needs an on-screen proof method before shipping (no health bar).

@@ -112,3 +112,25 @@ extern "C" void vpw_tripwire(const char* what, uint32_t a, uint32_t sp, uint32_t
     fprintf(stderr, "\n[vpw64dx] TRIPWIRE: %s: value=%08X sp=%08X ra=%08X s0=%08X\n", what, a, sp, ra, s0);
     vpw_print_last_pieces();
 }
+
+// [vpw64dx] Bring-up (VPW_DAMAGE_WATCH=1): every translated function calls this on entry (injected by a
+// one-off script, wiped by regen). It compares the body-part damage fields of player slots 1 and 2 with the
+// previous call and, when they changed, logs the function that ran just before (the writer, or its caller).
+extern "C" void vpw_damage_watch(const char* name, uint8_t* rdram) {
+    static const bool on = getenv("VPW_DAMAGE_WATCH") != nullptr;
+    if (!on) return;
+    static uint32_t prev[6] = {}; static const char* last = "";
+    static int logged = 0;
+    const uint32_t addrs[6] = { 0x8016C468, 0x8016C46C, 0x8016C470, 0x8016C77C, 0x8016C780, 0x8016C784 };
+    uint32_t cur[6];
+    for (int i = 0; i < 6; i++) cur[i] = *(uint32_t*)(rdram + (addrs[i] & 0x7FFFFF));
+    if (memcmp(cur, prev, sizeof cur) != 0) {
+        if (logged < 400 && prev[0] != 0) {
+            fprintf(stderr, "[dmgwatch] after %s (now entering %s):", last, name);
+            for (int i = 0; i < 6; i++) if (cur[i] != prev[i]) fprintf(stderr, " %08X:%08X->%08X", addrs[i], prev[i], cur[i]);
+            fprintf(stderr, "\n"); logged++;
+        }
+        memcpy(prev, cur, sizeof cur);
+    }
+    last = name;
+}

@@ -66,7 +66,7 @@ recognized by name, and everything can be remapped in **Settings → Controls**.
 - **Launcher.** Set everything before you play: display, sound, controls, cheats.
 - **In-game menu (Esc).** Change settings or quit without losing your place.
 - **Saves.** The game's own saves work, kept in your settings folder with automatic backups.
-- **Cheats (Game tab).** Special always ready for player 1 (the SPIRIT bar stays maxed and lit), and weak opponents (everyone else has no spirit: soft hits, no specials, easy pins). Want an opponent who never fights back? Pick **1P vs 2P** before the wrestler select and leave player 2 alone.
+- **Cheats (Game button).** Unlock all wrestlers (the hidden ones show up right away, your save is untouched), special always ready for player 1 (the SPIRIT bar stays maxed and lit), and weak opponents (everyone else has no spirit: soft hits, no specials, easy pins). Want an opponent who never fights back? Pick **1P vs 2P** and leave player 2 alone.
 
 Settings and saves live in `~/Library/Application Support/VPW64Deluxe` on a Mac and `~/.config/VPW64Deluxe` on Linux.
 
