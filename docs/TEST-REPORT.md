@@ -56,12 +56,26 @@ running to the end of the run (a frozen game stops producing sound).
 - **Can't be hurt** proven: under the same CPU attacks player 1's condition stays at 255 (it falls to 60 normally).
 - **Triple damage** proven: the same opening hits take an idle opponent to 201 instead of 237 (three times the drop).
 
+## Fourth round (2026-10-19)
+
+- **Against an N64 emulator** (mupen64plus, same ROM, no input): the port shows the same opening screens in
+  the same order and for the same time: the memorial screen about 6 s, the notice screen about 6 s, the logos
+  about 5 s, then the title for about 31 s before the attract demo. Text, logos, the blinking PRESS START and
+  the DEMO overlay all match. Which demo match plays is picked at random, so the wrestlers differ between runs.
+  Sheets: notes/accuracy-port.png, notes/accuracy-emulator-opening.png, notes/accuracy-emulator-title-demo.png.
+- **Watch mode** (CPU vs CPU) played a match to its finish and the game carried on; the match clock runs at
+  real-time speed.
+- **Every call from the original game into the mod's code** was checked for the kind of bug that crashed the
+  match ending. Only that one call had it, and it is fixed.
+- **Edit Mode saves:** put a mask on M. Misawa, accepted, left Edit Mode, quit, and started again keeping the
+  save. Misawa still had the mask (notes/editmode-save-proof.png).
+
 ## Not tested yet
 
 - Playing a Royal Road, League or Tournament through to the very end. The Tournament bracket advanced through
   skips and a watched match; my scripted presses on the bracket screen are sensitive to its animation timing,
   so I could not reliably drive it to a champion.
-- Making a new wrestler in Edit Mode and using him in a match (the editor screens all open and respond).
+- Using an edited wrestler in a match (the edit itself saves and survives a restart).
 - Linux on a real computer with a graphics card; Windows (built on a Windows PC from the build kit).
 
 Testing note: the game repeats a held button after about a quarter second, so scripted presses must be short
