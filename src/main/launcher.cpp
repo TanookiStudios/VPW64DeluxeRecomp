@@ -230,7 +230,7 @@ void vpw64dx_build_launcher(LauncherMenu* menu, const std::u8string& game_id, co
         configure->set_margin_top(12.0f);
         configure->add_pressed_callback([]() { open_settings_tab(config::controls::id); });
         section(ctx, player, "Cheats");
-        Label* ch = ctx.create_element<Label>(player, "Special always ready for player 1, and weak opponents. Both live under Game.", theme::Typography::Body);
+        Label* ch = ctx.create_element<Label>(player, "Unlock all wrestlers, can't be hurt, triple damage, special always ready and weak opponents. Turn them on under Settings, Cheats.", theme::Typography::Body);
         ch->set_color(dim);
     }
 
