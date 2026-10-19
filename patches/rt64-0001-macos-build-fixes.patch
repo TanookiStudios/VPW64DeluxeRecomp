@@ -49,3 +49,71 @@ index 5debe75..cb056ad 100644
                  fprintf(stderr, "[wcw][gbi] texthash(len=0x%X)=0x%016" PRIX64 "ULL text=0x%X\n",
                      tlen, XXH3_64bits(&RDRAM[textAddress], tlen), textAddress);
              }
+diff --git a/src/hle/rt64_interpreter.cpp b/src/hle/rt64_interpreter.cpp
+index dccaa87..71c50f6 100644
+--- a/src/hle/rt64_interpreter.cpp
++++ b/src/hle/rt64_interpreter.cpp
+@@ -5,6 +5,8 @@
+ #include "rt64_interpreter.h"
+ 
+ #include <cassert>
++#include <cstdio>
++#include <cstdlib>
+ 
+ //#define DUMP_DISPLAY_LISTS
+ 
+@@ -31,14 +33,31 @@ namespace RT64 {
+         const uint32_t AddressMask = 0xFFFFF8;
+         const uint32_t maskedTextAddress = textAddress & AddressMask;
+         const uint32_t maskedDataAddress = dataAddress & AddressMask;
+-        if ((UCode.textAddress != maskedTextAddress) || (UCode.dataAddress != maskedDataAddress)) {
+-            hleGBI = gbiManager.getGBIForUCode(state->RDRAM, maskedTextAddress, maskedDataAddress);
+-            if (hleGBI != nullptr) {
++        // [vpw64dx] VPW_TEST_GBI_MISS=N makes the Nth task's lookup fail, to prove the game survives it.
++        static int testMissAt = getenv("VPW_TEST_GBI_MISS") ? atoi(getenv("VPW_TEST_GBI_MISS")) : 0;
++        static int taskCount = 0;
++        static uint32_t lastMissText = UINT32_MAX;
++        if (resetFromTask && (testMissAt > 0) && (++taskCount == testMissAt)) {
++            fprintf(stderr, "[wcw][gbi] test: forcing a failed microcode lookup on task %d\n", taskCount);
++            hleGBI = nullptr;
++            return;
++        }
++
++        // [vpw64dx] Retry while no microcode is known, and keep the last good one when a lookup fails:
++        // a failed lookup used to leave hleGBI null for good, and the next display list crashed.
++        if ((hleGBI == nullptr) || (UCode.textAddress != maskedTextAddress) || (UCode.dataAddress != maskedDataAddress)) {
++            GBI *found = gbiManager.getGBIForUCode(state->RDRAM, maskedTextAddress, maskedDataAddress);
++            if (found != nullptr) {
++                hleGBI = found;
+                 state->rsp->setGBI(hleGBI);
++                UCode.textAddress = maskedTextAddress;
++                UCode.dataAddress = maskedDataAddress;
++            }
++            else if (lastMissText != maskedTextAddress) {
++                lastMissText = maskedTextAddress; // log each unknown microcode once, not every task
++                fprintf(stderr, "[wcw][gbi] unknown microcode (text=0x%X data=0x%X); %s\n", maskedTextAddress, maskedDataAddress,
++                    (hleGBI != nullptr) ? "keeping the previous one" : "skipping display lists until one is found");
+             }
+-
+-            UCode.textAddress = maskedTextAddress;
+-            UCode.dataAddress = maskedDataAddress;
+         }
+ 
+         if (hleGBI != nullptr) {
+@@ -154,7 +173,15 @@ namespace RT64 {
+     }
+ 
+     void Interpreter::processDisplayLists(uint32_t dlStartAdddress, DisplayList *dlStart) {
+-        assert(hleGBI != nullptr);
++        // [vpw64dx] No known microcode: skip this list (one missed frame) instead of crashing.
++        if (hleGBI == nullptr) {
++            static bool warned = false;
++            if (!warned) {
++                warned = true;
++                fprintf(stderr, "[wcw][gbi] display list skipped: no microcode known yet\n");
++            }
++            return;
++        }
+ 
+         state->dlCpuProfiler.start();
+ 
