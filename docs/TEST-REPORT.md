@@ -53,6 +53,8 @@ running to the end of the run (a frozen game stops producing sound).
   match). Fixed (a mod hook unwound the stack twice; notes/hack-map.md). Verified: the match ends and the game
   plays its post-match replay (notes/match-end-replay.png).
 - **Unlock all wrestlers** cheat proven: the hidden Legends 3 group appears only with the switch on.
+- **Can't be hurt** proven: under the same CPU attacks player 1's condition stays at 255 (it falls to 60 normally).
+- **Triple damage** proven: the same opening hits take an idle opponent to 201 instead of 237 (three times the drop).
 
 ## Not tested yet
 

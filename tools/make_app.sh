@@ -18,6 +18,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 NOTARIZE=0; [ "${1:-}" = "--notarize" ] && NOTARIZE=1
 ID="Developer ID Application"
+# Sign with one exact certificate (its SHA-1): other builds on this Mac can add temporary keychains that hold
+# another "Developer ID Application" identity, which makes the name alone ambiguous. Override with SIGN_ID.
+SIGN_ID=${SIGN_ID:-BE99F4BD03841049CD9AD27649A0F4B00A91377D}   # Developer ID Application: Michael Ireland (NPT8NXJ7C8)
 NAME="VPW64 Deluxe"
 EXE=VPW64Deluxe
 DEPS=$PWD/work/deps-mac
@@ -73,8 +76,8 @@ if [ -n "$BAD" ]; then echo "FAIL: app needs libraries other Macs do not have:" 
 python3 -I tools/release_scan.py "$APP"
 
 if [ -n "$(security find-identity -v -p codesigning | grep "$ID")" ]; then
-    codesign --force --deep --options runtime --timestamp --sign "$ID" "$APP" >/dev/null
-    echo "Signed with: $ID"
+    codesign --force --deep --options runtime --timestamp --sign "$SIGN_ID" "$APP" >/dev/null
+    echo "Signed with: $SIGN_ID"
 else
     codesign --force --deep --sign - "$APP" >/dev/null
     echo "WARNING: no Developer ID certificate in the keychain; signed AD-HOC." >&2
