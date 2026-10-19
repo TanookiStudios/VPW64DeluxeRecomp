@@ -71,3 +71,17 @@ See above: nothing in memory holds the displayed seconds or a 60-per-second fram
 - AKI family layout (VPW Studio, VPW64 and Revenge): attack ratings at +0x05..+0x09, defense at +0x0A..+0x0E.
   Candidate cheats: P1 attack max (damage boost), opponents' defense min (one-hit KO), P1 defense max /
   opponents' attack min (can't be hurt). Needs an on-screen proof method before shipping (no health bar).
+
+## Fighter records and condition (PROVEN)
+
+- Fighter records: 0x8016C450 + k*0x314 (the "player slots" above start 0x10 earlier). The game's set-action
+  routine func_80140BC0(record, action) writes the action at +0x1E; +0x2F0 points at the current move's data.
+- Condition: halfwords +0x26 (current) and +0x28 (ceiling it recovers to). 255 for a fresh wrestler, unchanged in
+  idle matches, falling as the wrestler takes hits; +0x2B is the SPIRIT byte.
+- Triple damage proof (idle second player, same scripted attacks): opponent 255 -> 237 normally, 255 -> 201
+  with the cheat (exactly three times the 18-point drop).
+- Can't be hurt proof (CPU match, player 1 mashing): player 1 falls to 60/201 normally, stays 255/255 with it.
+- In-match check for all cheats: both players' records sane (condition <= 255, current <= ceiling, move
+  pointer inside RDRAM). The fixed slot words used before only settle partway into a match.
+- Holding an opponent's condition at 1 does NOT make them lose: the CPU went into its red "snapped" mode and
+  even won. So there is no separate one-hit-KO cheat; Triple damage plus Weak opponents covers it.

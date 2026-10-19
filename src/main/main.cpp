@@ -337,6 +337,8 @@ static void update_scripted_pad() {
 static const std::string vpw64dx_game_tab_id = "game";
 namespace cheat {
     inline const std::string unlock_wrestlers = "unlock_wrestlers";
+    inline const std::string no_damage = "no_damage";
+    inline const std::string triple_damage = "triple_damage";
     inline const std::string special_ready = "special_ready";
     inline const std::string weak_opponents = "weak_opponents";
 }
@@ -344,6 +346,10 @@ static void vpw64dx_create_game_tab() {
     recomp::config::Config& c = recompui::config::create_config_tab("Cheats", vpw64dx_game_tab_id, false);
     c.add_bool_option(cheat::unlock_wrestlers, "Unlock all wrestlers",
         "Every hidden wrestler is selectable right away. Your save is not changed: switch this off and they lock again.", false);
+    c.add_bool_option(cheat::no_damage, "Can't be hurt (player 1)",
+        "Player 1's body never wears down, so you keep getting up and kicking out.", false);
+    c.add_bool_option(cheat::triple_damage, "Triple damage (player 1)",
+        "Everything you do hurts your opponents three times as much.", false);
     c.add_bool_option(cheat::special_ready, "Special always ready (player 1)",
         "Player 1's SPIRIT bar stays maxed out and lit, so the special is always there.", false);
     c.add_bool_option(cheat::weak_opponents, "Weak opponents",
@@ -366,8 +372,32 @@ static void vpw64dx_apply_cheats() {
     auto rd16 = [](uint32_t a) { return *(uint16_t*)(g_ww_rdram + ((a & 0x7FFFFF) ^ 2)); };
     auto wr8 = [](uint32_t a, uint8_t v) { g_ww_rdram[(a & 0x7FFFFF) ^ 3] = v; };
     const uint32_t slot0 = 0x8016C440, stride = 0x314, spirit = 0x3B;
-    bool in_match = rd16(slot0 + 0x24) == 0xFFFF && rd16(slot0 + 0x62) == 0x0800 && rd16(slot0 + 0x7E) == 0x0600;
-    if (!in_match) return;
+    // In a match: players 1 and 2 both have a sane fighter record (condition 0..255 with current <= ceiling,
+    // and a current-move pointer inside RDRAM). The fixed slot words used before only settle partway into a
+    // match, which let the opening hits through.
+    auto rd32 = [](uint32_t a) { return *(uint32_t*)(g_ww_rdram + (a & 0x7FFFFF)); };
+    auto sane = [&](uint32_t rec) {
+        uint16_t c = rd16(rec + 0x26), m = rd16(rec + 0x28); uint32_t mv = rd32(rec + 0x2F0);
+        return c <= 255 && m <= 255 && m > 0 && c <= m && mv >= 0x80000400u && mv < 0x80800000u;
+    };
+    bool in_match = sane(0x8016C450) && sane(0x8016C450 + stride);
+    // Fighter records start 0x10 into each slot (0x8016C450 + k*0x314). Condition: halfwords +0x26 (current)
+    // and +0x28 (ceiling it recovers to), 255 when fresh, falling as the wrestler takes hits (notes/ram-map.md).
+    auto wr16 = [](uint32_t a, uint16_t v) { *(uint16_t*)(g_ww_rdram + ((a & 0x7FFFFF) ^ 2)) = v; };
+    const uint32_t rec0 = 0x8016C450, cond_offs[2] = { 0x26, 0x28 };
+    static uint16_t prev[4][2]; static bool have_prev = false;
+    if (!in_match) { have_prev = false; return; }
+    if (vpw64dx_cheat_on(cheat::no_damage)) for (uint32_t o : cond_offs) wr16(rec0 + o, 255);
+    for (int k = 1; k < 4; k++) for (int f = 0; f < 2; f++) {
+        uint32_t a = rec0 + k * stride + cond_offs[f];
+        uint16_t cur = rd16(a);
+        if (have_prev && vpw64dx_cheat_on(cheat::triple_damage) && cur < prev[k][f] && prev[k][f] <= 255) {
+            int lost = prev[k][f] - cur, now = prev[k][f] - 3 * lost;
+            cur = (uint16_t)(now < 0 ? 0 : now); wr16(a, cur);
+        }
+        prev[k][f] = cur;
+    }
+    have_prev = true;
     if (vpw64dx_cheat_on(cheat::special_ready)) wr8(slot0 + spirit, 0xFF);
     if (vpw64dx_cheat_on(cheat::weak_opponents)) for (int k = 1; k < 4; k++) wr8(slot0 + k * stride + spirit, 0);
 }
