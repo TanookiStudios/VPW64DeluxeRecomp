@@ -1071,7 +1071,15 @@ int main(int argc, char** argv) {
     SDL_setenv("SDL_AUDIODRIVER", "wasapi", true);
 #endif
     SDL_SetMainReady();
-    NFD_Init();
+#ifdef __linux__
+    // shortcut: on a machine without a working D-Bus session, something in shutdown unrefs a null D-Bus connection and
+    // libdbus aborts the game while it closes. Make libdbus warn instead; find the caller if it ever matters elsewhere.
+    setenv("DBUS_FATAL_WARNINGS", "0", 0);
+#endif
+    // On Linux the file picker needs the desktop's D-Bus session; without one NFD_Init fails, and NFD_Quit
+    // would then abort the game on the way out.
+    const bool nfd_ready = (NFD_Init() == NFD_OKAY);
+    if (!nfd_ready) fprintf(stderr, "[vpw64dx] file picker unavailable: %s\n", NFD_GetError() ? NFD_GetError() : "unknown");
 
     SDL_InitSubSystem(SDL_INIT_AUDIO);
     reset_audio(32000);
@@ -1425,7 +1433,7 @@ int main(int argc, char** argv) {
         input_callbacks, gfx_callbacks, events_callbacks, error_callbacks, threads_callbacks);
     fprintf(stderr, "[wcw] recomp::start returned\n");
 
-    NFD_Quit();
+    if (nfd_ready) NFD_Quit();
     // Saves are flushed before recomp::start returns (join_saving_thread). The UI toolkit's static
     // destructors then crash on the way out (RmlUi context table), which turned every quit into a
     // crash report; leave the rest to the operating system.

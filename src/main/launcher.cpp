@@ -7,6 +7,7 @@
 #include <filesystem>
 
 #include <SDL.h>
+#include <nfd.h>
 
 #include "librecomp/game.hpp"
 #include "recompinput/players.h"
@@ -104,7 +105,19 @@ namespace {
 
     void browse_for_rom() {
         file::open_file_dialog([](bool success, const std::filesystem::path& path) {
-            if (!success) return;
+            if (!success) {
+                // Cancel sets no error; a picker that could not open does (on Linux: no desktop portal).
+                if (NFD_GetError() != nullptr) {
+                    fprintf(stderr, "[vpw64dx] file picker failed: %s\n", NFD_GetError());
+                    NFD_ClearError();
+                    open_info_prompt("The file picker could not open",
+                        "On Linux the file picker needs your desktop's portal service. Install xdg-desktop-portal-gtk "
+                        "(or xdg-desktop-portal-kde on KDE) with your package manager, log out and back in, then press "
+                        "Browse for ROM again.",
+                        "OK", []() {}, ButtonStyle::Primary);
+                }
+                return;
+            }
             auto err = recomp::select_rom(path, st.game_id);
             if (err == recomp::RomValidationError::Good) {
                 refresh_rom_state();
